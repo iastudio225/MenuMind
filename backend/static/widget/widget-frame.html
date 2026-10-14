@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Assistant de commande</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: transparent; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #root { position: relative; height: 100%; }
+
+  #launcher { position: absolute; bottom: 0; right: 0; width: 56px; height: 56px;
+    border-radius: 9999px; border: 0; cursor: pointer; background: #E05638; color: #fff;
+    display: grid; place-items: center; box-shadow: 0 8px 24px rgba(15,23,42,.35); }
+  #launcher:hover { filter: brightness(1.05); }
+  #launcher svg { width: 24px; height: 24px; }
+
+  #panel { position: absolute; bottom: 0; right: 0; width: 100%; height: 100%;
+    display: none; flex-direction: column; overflow: hidden; border-radius: 16px;
+    background: #fff; box-shadow: 0 16px 48px rgba(15,23,42,.28); border: 1px solid #e2e8f0; }
+  #panel.open { display: flex; }
+
+  #header { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    background: #0F172A; color: #fff; flex: 0 0 auto; }
+  #header .avatar { width: 34px; height: 34px; border-radius: 9999px; background: #E05638;
+    display: grid; place-items: center; flex: 0 0 auto; }
+  #header .avatar svg { width: 18px; height: 18px; }
+  #header .meta { min-width: 0; flex: 1; }
+  #header .meta p { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #header .meta span { font-size: 11px; opacity: .7; }
+  #close { border: 0; background: transparent; color: #fff; cursor: pointer; padding: 4px; line-height: 0; }
+  #close svg { width: 18px; height: 18px; }
+
+  #messages { flex: 1 1 auto; overflow-y: auto; padding: 12px; display: flex;
+    flex-direction: column; gap: 10px; background: #f8fafc; }
+  .bubble { max-width: 85%; padding: 8px 12px; border-radius: 16px; font-size: 13px;
+    line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+  .user { align-self: flex-end; background: #E05638; color: #fff; border-bottom-right-radius: 4px; }
+  .assistant { align-self: flex-start; background: #e2e8f0; color: #0F172A; border-bottom-left-radius: 4px; }
+  .welcome { align-self: stretch; background: #f1f5f9; color: #334155; font-size: 13px;
+    padding: 8px 12px; border-radius: 12px; }
+
+  .cart { align-self: stretch; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 10px 12px; font-size: 12px; color: #0F172A; }
+  .cart .cart-title { display: flex; align-items: center; gap: 6px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; font-size: 10px; color: #64748b; }
+  .cart .line { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; }
+  .cart .opts { display: block; font-size: 10px; color: #94a3b8; }
+  .cart .foot { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+  .cart .row { display: flex; justify-content: space-between; color: #64748b; margin-top: 2px; }
+  .cart .total { display: flex; justify-content: space-between; font-weight: 700;
+    color: #0F172A; margin-top: 4px; font-size: 13px; }
+
+  #loading { display: none; align-items: center; gap: 8px; padding: 0 12px 8px;
+    font-size: 12px; color: #64748b; background: #f8fafc; }
+  #loading.show { display: flex; }
+  .spinner { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-top-color: #E05638;
+    border-radius: 9999px; animation: spin .8s linear infinite; flex: 0 0 auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error { display: none; align-items: center; justify-content: space-between; gap: 8px;
+    margin: 0 12px 8px; padding: 8px 10px; border-radius: 10px; font-size: 12px;
+    background: #fee2e2; color: #b91c1c; }
+  #error.show { display: flex; }
+  #retry { border: 1px solid #fecaca; background: #fff; color: #b91c1c; border-radius: 8px;
+    font-size: 11px; padding: 4px 8px; cursor: pointer; white-space: nowrap; }
+  #retry:disabled { opacity: .5; cursor: default; }
+
+  #form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid #e2e8f0; background: #fff; flex: 0 0 auto; }
+  #input { flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 12px;
+    font-size: 13px; outline: none; }
+  #input:focus { border-color: #E05638; }
+  #send { border: 0; border-radius: 10px; background: #E05638; color: #fff; width: 40px;
+    cursor: pointer; display: grid; place-items: center; }
+  #send:disabled { opacity: .5; cursor: default; }
+  #send svg { width: 16px; height: 16px; }
+
+  @media (max-width: 480px) {
+    #panel { border-radius: 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <button id="launcher" aria-label="Ouvrir l'assistant de commande" aria-expanded="false" data-testid="chat-launcher">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </button>
+
+  <div id="panel" role="dialog" aria-label="Assistant de commande" data-testid="chat-panel">
+    <div id="header">
+      <span class="avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+      <div class="meta">
+        <p id="shop-name" data-testid="chat-shop-name">Assistant</p>
+        <span>Répond instantanément</span>
+      </div>
+      <button id="close" aria-label="Fermer l'assistant" data-testid="chat-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div id="messages" aria-live="polite" aria-label="Messages de la conversation" data-testid="chat-messages"></div>
+    <div id="loading" data-testid="chat-loading"><span class="spinner"></span> L'assistant est en train d'écrire…</div>
+    <div id="error" data-testid="chat-error"><span id="error-text"></span>
+      <button id="retry" data-testid="chat-retry">Réessayer</button>
+    </div>
+
+    <form id="form">
+      <input id="input" placeholder="Votre message…" aria-label="Votre message" maxlength="1000" autocomplete="off" data-testid="chat-input" />
+      <button id="send" type="submit" aria-label="Envoyer le message" disabled data-testid="chat-send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var params = new URLSearchParams(window.location.search);
+  var restaurantId = params.get("restaurant") || "";
+  var PARENT_ORIGIN = document.referrer ? new URL(document.referrer).origin : "*";
+  // Le frame est servi par l'API : les fetch sont same-origin, aucun CORS requis.
+  var API = "";
+
+  var CLOSED_W = 64, CLOSED_H = 64, OPEN_W = 380, OPEN_H = 560;
+  var open = false, sending = false, conversationId = null;
+  var messages = [], welcome = "", shopName = "Assistant";
+  var lastFailedText = null;
+
+  var el = {
+    launcher: document.getElementById("launcher"),
+    panel: document.getElementById("panel"),
+    close: document.getElementById("close"),
+    messages: document.getElementById("messages"),
+    loading: document.getElementById("loading"),
+    error: document.getElementById("error"),
+    errorText: document.getElementById("error-text"),
+    retry: document.getElementById("retry"),
+    form: document.getElementById("form"),
+    input: document.getElementById("input"),
+    send: document.getElementById("send"),
+    shopName: document.getElementById("shop-name"),
+  };
+
+  function fmt(n) {
+    return Number(n || 0).toLocaleString("fr-FR").replace(/ /g, " ") + " FCFA";
+  }
+  var ORDER_LABELS = { DELIVERY: "Livraison", PICKUP: "À emporter" };
+
+  function notifySize() {
+    var sw = (window.screen && window.screen.width) || 1280;
+    var sh = (window.screen && window.screen.height) || 800;
+    var w = open ? Math.min(OPEN_W, sw - 24) : CLOSED_W;
+    var h = open ? Math.min(OPEN_H, sh - 120) : CLOSED_H;
+    try {
+      window.parent.postMessage({ type: "restoia-widget-size", width: w, height: h }, PARENT_ORIGIN);
+    } catch (e) { /* origine hôte injoignable — tailles par défaut */ }
+  }
+
+  function render() {
+    el.messages.innerHTML = "";
+    if (messages.length === 0 && welcome) {
+      var w = document.createElement("div");
+      w.className = "welcome";
+      w.setAttribute("data-testid", "chat-welcome");
+      w.textContent = welcome;
+      el.messages.appendChild(w);
+    }
+    messages.forEach(function (m) {
+      if (m.role === "user") {
+        var u = document.createElement("div");
+        u.className = "bubble user";
+        u.setAttribute("data-testid", "chat-message-user");
+        u.textContent = m.content;
+        el.messages.appendChild(u);
+        return;
+      }
+      var wrap = document.createElement("div");
+      wrap.setAttribute("data-testid", "chat-message-assistant");
+      var a = document.createElement("div");
+      a.className = "bubble assistant";
+      a.textContent = m.content;
+      wrap.appendChild(a);
+      var cart = m.cart;
+      if (cart && cart.items && cart.items.length > 0) {
+        var card = document.createElement("div");
+        card.className = "cart";
+        card.setAttribute("data-testid", "chat-cart-card");
+        var title = document.createElement("p");
+        title.className = "cart-title";
+        title.textContent = " Panier";
+        card.appendChild(title);
+        cart.items.forEach(function (line) {
+          var l = document.createElement("div");
+          l.className = "line";
+          var left = document.createElement("span");
+          left.textContent = line.quantity + " × " + line.name;
+          if (line.options && line.options.length) {
+            var o = document.createElement("span");
+            o.className = "opts";
+            o.textContent = line.options.map(function (x) { return x.name; }).join(", ");
+            left.appendChild(o);
+          }
+          var right = document.createElement("span");
+          right.textContent = fmt(line.line_total);
+          l.appendChild(left); l.appendChild(right);
+          card.appendChild(l);
+        });
+        var foot = document.createElement("div");
+        foot.className = "foot";
+        if (Number(cart.delivery_fee) > 0) {
+          var fee = document.createElement("div");
+          fee.className = "row";
+          fee.innerHTML = "<span>Livraison</span><span>" + fmt(cart.delivery_fee) + "</span>";
+          foot.appendChild(fee);
+        }
+        if (cart.order_type && ORDER_LABELS[cart.order_type]) {
+          var mode = document.createElement("div");
+          mode.className = "row";
+          mode.innerHTML = "<span>Mode</span><span>" + ORDER_LABELS[cart.order_type] + "</span>";
+          foot.appendChild(mode);
+        }
+        var total = document.createElement("div");
+        total.className = "total";
+        total.setAttribute("data-testid", "chat-cart-total");
+        total.innerHTML = "<span>Total</span><span>" + fmt(cart.total) + "</span>";
+        foot.appendChild(total);
+        card.appendChild(foot);
+        wrap.appendChild(card);
+      }
+      el.messages.appendChild(wrap);
+    });
+    el.messages.scrollTop = el.messages.scrollHeight;
+  }
+
+  function showError(text, retryText) {
+    lastFailedText = retryText;
+    el.errorText.textContent = text;
+    el.error.classList.add("show");
+  }
+  function clearError() {
+    el.error.classList.remove("show");
+    lastFailedText = null;
+  }
+
+  function setOpen(next) {
+    open = next;
+    el.panel.classList.toggle("open", open);
+    el.launcher.setAttribute("aria-expanded", open ? "true" : "false");
+    el.launcher.style.display = open ? "none" : "grid";
+    notifySize();
+    if (open) el.input.focus();
+  }
+
+  function apiErrorDetail(detail) {
+    if (detail == null) return "Erreur de connexion. Vérifiez votre réseau.";
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) return detail.map(function (e) { return e && e.msg ? e.msg : JSON.stringify(e); }).join(" ");
+    if (detail && detail.msg) return detail.msg;
+    return String(detail);
+  }
+
+  function send(text, appendUser) {
+    var msg = (text || "").trim();
+    if (!msg || sending) return;
+    sending = true;
+    clearError();
+    el.loading.classList.add("show");
+    el.send.disabled = true;
+    el.input.disabled = true;
+    if (appendUser) messages.push({ role: "user", content: msg });
+    render();
+    var body = { restaurant_public_id: restaurantId, message: msg };
+    if (conversationId) body.conversation_id = conversationId;
+    fetch(API + "/api/public/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        return { status: res.status, data: data };
+      });
+    }).then(function (r) {
+      if (r.status < 200 || r.status >= 300) {
+        showError(apiErrorDetail(r.data.detail), msg);
+        return;
+      }
+      conversationId = r.data.conversation_id || conversationId;
+      messages.push({ role: "assistant", content: r.data.message || "", cart: r.data.cart || null });
+      render();
+    }).catch(function () {
+      showError("Erreur de connexion. Vérifiez votre réseau.", msg);
+    }).then(function () {
+      sending = false;
+      el.loading.classList.remove("show");
+      el.send.disabled = !el.input.value.trim();
+      el.input.disabled = false;
+      el.input.focus();
+    });
+  }
+
+  el.launcher.addEventListener("click", function () { setOpen(true); });
+  el.close.addEventListener("click", function () { setOpen(false); });
+  el.input.addEventListener("input", function () { el.send.disabled = sending || !el.input.value.trim(); });
+  el.input.addEventListener("keydown", function (e) { if (e.key === "Escape") setOpen(false); });
+  el.form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = el.input.value;
+    el.input.value = "";
+    el.send.disabled = true;
+    send(v, true);
+  });
+  el.retry.addEventListener("click", function () { send(lastFailedText, false); });
+
+  if (!restaurantId) {
+    showError("Identifiant restaurant manquant.", null);
+  } else {
+    fetch(API + "/api/public/menu/" + encodeURIComponent(restaurantId))
+      .then(function (res) {
+        if (!res.ok) throw new Error("menu");
+        return res.json();
+      })
+      .then(function (data) {
+        var r = data.restaurant || {};
+        shopName = r.name || "Assistant";
+        welcome = r.welcome_message || "Bonjour 👋 Comment puis-je vous aider ?";
+        el.shopName.textContent = shopName;
+        if (r.widget && r.widget.primary_color) {
+          document.getElementById("launcher").style.background = r.widget.primary_color;
+        }
+        render();
+      })
+      .catch(function () {
+        welcome = "";
+        showError("Impossible de charger le restaurant.", null);
+      });
+  }
+  render();
+  notifySize();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+{
+  "project_info": {
+    "name": "RestoIA - Réceptionniste IA 24/7 pour Restaurants",
+    "market": "Côte d'Ivoire (Abidjan, Bouaké, San-Pédro)",
+    "currency": "FCFA",
+    "language": "French (fr-CI)",
+    "app_type": "hybrid_fullstack (B2B SaaS Dashboard + Marketing Landing Page)",
+    "positioning": "Votre réceptionniste IA qui prend vos commandes 24h/24 par WhatsApp & Web."
+  },
+  "theme": {
+    "default_mode": "light",
+    "supports_dark_mode": true,
+    "color_archetype": "Organic & Performance Hybrid (Warm Ivory, Slate & Spicy Amber)",
+    "colors": {
+      "primary": {
+        "main": "#E05638",
+        "hover": "#C84327",
+        "active": "#A8331A",
+        "light": "#FDF2EF",
+        "foreground": "#FFFFFF"
+      },
+      "secondary": {
+        "main": "#0F172A",
+        "hover": "#1E293B",
+        "foreground": "#F8FAFC"
+      },
+      "accent": {
+        "emerald": "#10B981",
+        "emerald_light": "#ECFDF5",
+        "amber": "#F59E0B",
+        "amber_light": "#FEF3C7",
+        "coral": "#F97316"
+      },
+      "background": {
+        "light_page": "#FAF7F2",
+        "light_card": "#FFFFFF",
+        "light_subtle": "#F3EFEA",
+        "dark_page": "#090D16",
+        "dark_card": "#131B2E",
+        "dark_subtle": "#1C2640"
+      },
+      "text": {
+        "primary_light": "#0F172A",
+        "secondary_light": "#475569",
+        "muted_light": "#64748B",
+        "primary_dark": "#F8FAFC",
+        "secondary_dark": "#94A3B8",
+        "muted_dark": "#64748B"
+      },
+      "borders": {
+        "light": "#E2E8F0",
+        "light_subtle": "#F1F5F9",
+        "dark": "#1E293B",
+        "dark_subtle": "#334155"
+      }
+    }
+  },
+  "typography": {
+    "headings": {
+      "font_family": "'Outfit', 'Cabinet Grotesk', sans-serif",
+      "weights": ["600", "700", "800"],
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-semibold",
+      "h4": "text-lg sm:text-xl font-medium"
+    },
+    "body": {
+      "font_family": "'Plus Jakarta Sans', 'Inter', sans-serif",
+      "weights": ["400", "500", "600"],
+      "size": "text-base sm:text-sm",
+      "line_height": "leading-relaxed"
+    },
+    "mono": {
+      "font_family": "'JetBrains Mono', monospace",
+      "size": "text-xs font-mono"
+    }
+  },
+  "image_urls": {
+    "dishes": [
+      {
+        "url": "https://images.pexels.com/photos/17952748/pexels-photo-17952748.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Riz Jollof & Bananes Alloco croustillantes",
+        "category": "menu_hero"
+      },
+      {
+        "url": "https://images.pexels.com/photos/37648018/pexels-photo-37648018.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Plat traditionnel africain avec sauce aux feuilles",
+        "category": "menu_item"
+      }
+    ],
+    "restaurant_interiors": [
+      {
+        "url": "https://images.unsplash.com/photo-1777502286570-2725dff09ce5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjByZXN0YXVyYW50JTIwaW50ZXJpb3IlMjBkaW5pbmclMjB0YWJsZSUyMGF0bW9zcGhlcmV8ZW58MHx8fHwxNzkxMzAwMTc5fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Intérieur de restaurant moderne à Abidjan avec éclairage chaleureux",
+        "category": "landing_hero_bg"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1574966739987-65e38db0f7ce?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjByZXN0YXVyYW50JTIwaW50ZXJpb3IlMjBkaW5pbmclMjB0YWJsZSUyMGF0bW9zcGhlcmV8ZW58MHx8fHwxNzkxMzAwMTc5fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Table de restaurant élégante avec verrerie",
+        "category": "testimonial_bg"
+      }
+    ],
+    "people": [
+      {
+        "url": "https://images.unsplash.com/photo-1641827886499-8287354c9ce0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwcmVzdGF1cmFudCUyMGNoZWYlMjBjb29raW5nJTIwZm9vZHxlbnwwfHx8fDE3OTEzMDAxNzl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Gérant de restaurant à Abidjan",
+        "category": "restaurant_owner"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1689155494424-d2337856fe3e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwyfHxhZnJpY2FuJTIwcmVzdGF1cmFudCUyMGNoZWYlMjBjb29raW5nJTIwZm9vZHxlbnwwfHx8fDE3OTEzMDAxNzl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Cliente satisfaite dégustant un plat",
+        "category": "customer_avatar"
+      }
+    ]
+  },
+  "layout_and_spacing": {
+    "container_padding": "px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto",
+    "section_margin": "py-16 lg:py-24",
+    "card_padding": "p-6 sm:p-8",
+    "bento_grid": {
+      "dashboard_grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
+      "features_grid": "grid grid-cols-1 md:grid-cols-3 gap-8"
+    }
+  },
+  "key_screens_architecture": {
+    "landing_page": {
+      "hero": {
+        "headline": "Votre Réceptionniste IA qui prend vos commandes 24h/24",
+        "subheadline": "Ne manquez plus aucune commande. Automatisez les prises de commandes WhatsApp et Web pour votre restaurant en Côte d'Ivoire.",
+        "interactive_widget_preview": "Simulateur conversationnel IA en direct avec commande de Garba/Alloco en FCFA",
+        "ctas": ["Essayer gratuitement 14 jours", "Voir la démonstration"]
+      },
+      "pricing_plans": [
+        {
+          "name": "STARTER",
+          "price": "15 000 FCFA/mois",
+          "period": "Facturé mensuellement",
+          "description": "Parfait pour les maquis et petits fast-foods.",
+          "features": ["Jusqu'à 300 commandes/mois", "Agent IA WhatsApp & Web", "Menu digital QR Code", "Support WhatsApp 6j/7"],
+          "highlighted": false,
+          "badge": "Démarrage"
+        },
+        {
+          "name": "BUSINESS",
+          "price": "30 000 FCFA/mois",
+          "period": "Facturé mensuellement",
+          "description": "Idéal pour les restaurants établis avec livraison.",
+          "features": ["Commandes illimitées", "Agent IA multi-langue & argot local", "Gestion des zones de livraison", "Tableau de bord multi-utilisateurs", "Intégration imprimante reçu"],
+          "highlighted": true,
+          "badge": "Le plus populaire 🔥"
+        },
+        {
+          "name": "PRO",
+          "price": "50 000 FCFA/mois",
+          "period": "Facturé mensuellement",
+          "description": "Pour les chaînes de restaurants & grands établissements.",
+          "features": ["Multi-établissements (jusqu'à 5)", "Manager dédié 24/7", "Statistiques & prédictions IA", "API & webhooks personnalisés", "Nom de domaine dédié"],
+          "highlighted": false,
+          "badge": "Entreprise"
+        }
+      ]
+    },
+    "auth_screens": {
+      "register": "Creation de compte restaurant multi-tenant (Nom, email, telephone, mot de passe)",
+      "login": "Connexion sécurisée avec choix du rôle (Restaurant ou Super Admin)",
+      "forgot_password": "Récupération par SMS/WhatsApp ou Email en FCFA"
+    },
+    "onboarding_flow": {
+      "steps": [
+        "Identité du restaurant (Nom, Description, Logo)",
+        "Localisation & Contact (Quartier/Ville Abidjan, Téléphone WhatsApp, Adresse)",
+        "Configuration financière (Devise FCFA, Taux de livraison par zone)"
+      ]
+    },
+    "restaurant_dashboard": {
+      "sidebar_nav": ["Vue d'ensemble", "Commandes", "Menu & Carte", "Clients", "Livraison & Zones", "Réceptionniste IA", "Paramètres"],
+      "overview_stat_cards": [
+        {"label": "Commandes Aujourd'hui", "value": "42", "change": "+18% vs hier", "status": "positive"},
+        {"label": "Chiffre d'Affaires", "value": "345 000 FCFA", "change": "+24% ce mois", "status": "positive"},
+        {"label": "Commandes en Attente", "value": "3", "change": "Action requise", "status": "warning"},
+        {"label": "En Préparation", "value": "5", "change": "Cuisine", "status": "neutral"},
+        {"label": "Panier Moyen", "value": "8 200 FCFA", "change": "+5%", "status": "positive"}
+      ],
+      "live_activity_feed": "Flux des conversations en cours gérées par la Réceptionniste IA avec transcript instantané"
+    },
+    "user_management": {
+      "roles": ["PROPRIÉTAIRE (Full access)", "MANAGER (Commandes & Menu)", "SERVEUR / CUISINE (Lecture des commandes)"],
+      "actions": ["Inviter un membre", "Changer le rôle", "Désactiver un accès"]
+    },
+    "super_admin": {
+      "title": "Super Admin - Supervision SaaS Côte d'Ivoire",
+      "metrics": ["Restaurants Actifs (128)", "Revenu Mensuel SaaS (3.84M FCFA)", "Total Commandes Traitées (14 290)"],
+      "tenant_table": "Liste complète des établissements avec statut d'abonnement (STARTER/BUSINESS/PRO) et statut d'activation"
+    }
+  },
+  "testing_and_accessibility": {
+    "data_testid_convention": "kebab-case strict for all interactive elements",
+    "examples": [
+      "data-testid='hero-cta-signup'",
+      "data-testid='nav-pricing-link'",
+      "data-testid='pricing-plan-business-btn'",
+      "data-testid='login-submit-button'",
+      "data-testid='onboarding-next-step'",
+      "data-testid='dashboard-stat-revenue'",
+      "data-testid='user-invite-modal-trigger'",
+      "data-testid='superadmin-tenant-row-1'"
+    ],
+    "contrast_ratio": "WCAG AA minimum (4.5:1 for normal text, 3:1 for large text and buttons)",
+    "prefers_reduced_motion": "All motion Framer components wrapped with accessibility checks"
+  },
+  "instructions_to_main_agent": [
+    "Follow this exact JSON structure and palette for styling Phase A screens.",
+    "Implement the landing page with realistic French text tailored for the Ivorian market (Abidjan, FCFA currency, Garba, Alloco, Choukouya, etc.).",
+    "Ensure all interactive components (buttons, links, inputs, modals, tabs) include data-testid attributes.",
+    "Use Lucide-react icons exclusively for consistent modern UI design.",
+    "Provide interactive widgets for the AI Receptionist preview on the landing page so potential buyers can experience the product.",
+    "Create tabbed or router-switchable views for Phase A screens: Landing Page, Auth (Login/Register/Forgot), Onboarding Wizard, Restaurant Dashboard, User Management, and Super Admin Dashboard."
+  ]
+}
