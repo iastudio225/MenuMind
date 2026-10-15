@@ -28,6 +28,13 @@ services:
     depends_on:
       - mongo
     restart: unless-stopped
+    healthcheck:
+      # python:slim n'a ni curl ni wget — on passe par urllib (sort non-0 si status != 2xx)
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/api/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   frontend:
     build:
@@ -38,12 +45,25 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    healthcheck:
+      # wget (busybox) inclus dans nginx:alpine
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   mongo:
     image: mongo:7
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     # Ne jamais exposer 27017 publiquement
 
 volumes:
