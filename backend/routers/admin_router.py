@@ -3,22 +3,33 @@ from fastapi import APIRouter, Depends, HTTPException
 from bson import ObjectId
 
 from database import db
-from models import (AdminRestaurantCreate, RestaurantStatusUpdate, serialize, now_iso,
+from models import (AdminRestaurantCreate, AdminRestaurantUpdate, RestaurantStatusUpdate,
+                    PlanCreate, PlanUpdate, serialize, now_iso,
                     SUPER_ADMIN, RESTAURANT_OWNER)
 from auth import require_roles, hash_password
 from routers.auth_router import default_opening_hours
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
+EDITABLE_RESTAURANT_FIELDS = ("name", "description", "phone", "whatsapp", "email",
+                              "address", "city")
+
+
+async def plan_assignments_count(code: str) -> int:
+    return await db.restaurants.count_documents({"plan": code, "status": {"$ne": "deleted"}})
+
 
 @router.get("/metrics")
 async def metrics(user: dict = Depends(require_roles(SUPER_ADMIN))):
-    total = await db.restaurants.count_documents({})
+    not_deleted = {"status": {"$ne": "deleted"}}
+    total = await db.restaurants.count_documents(not_deleted)
     active = await db.restaurants.count_documents({"status": "active"})
     suspended = await db.restaurants.count_documents({"status": "suspended"})
     total_orders = await db.orders.count_documents({})
 
     plan_prices = {"STARTER": 15000, "BUSINESS": 30000, "PRO": 50000}
+    for p in await db.plans.find({}).to_list(100):
+        plan_prices[p["code"]] = p.get("price", 0)
     active_docs = await db.restaurants.find({"status": "active"}).to_list(10000)
     mrr = sum(plan_prices.get(r.get("plan", "STARTER"), 0) for r in active_docs)
 
@@ -35,7 +46,7 @@ async def metrics(user: dict = Depends(require_roles(SUPER_ADMIN))):
 
 @router.get("/restaurants")
 async def list_restaurants(user: dict = Depends(require_roles(SUPER_ADMIN))):
-    docs = await db.restaurants.find({}).sort("created_at", -1).to_list(1000)
+    docs = await db.restaurants.find({"status": {"$ne": "deleted"}}).sort("created_at", -1).to_list(1000)
     result = []
     for d in docs:
         rid = str(d["_id"])
@@ -74,6 +85,44 @@ async def set_status(restaurant_id: str, body: RestaurantStatusUpdate,
     return {"message": f"Restaurant {body.status}"}
 
 
+@router.patch("/restaurants/{restaurant_id}")
+async def update_restaurant(restaurant_id: str, body: AdminRestaurantUpdate,
+                            user: dict = Depends(require_roles(SUPER_ADMIN))):
+    doc = await db.restaurants.find_one({"_id": ObjectId(restaurant_id),
+                                         "status": {"$ne": "deleted"}})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Restaurant introuvable")
+    updates = body.model_dump(exclude_unset=True)
+    if "plan" in updates and updates["plan"]:
+        if not await db.plans.find_one({"code": updates["plan"]}):
+            raise HTTPException(status_code=400, detail="Plan inexistant")
+    if not updates:
+        raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour")
+    updates["updated_at"] = now_iso()
+    await db.restaurants.update_one({"_id": ObjectId(restaurant_id)}, {"$set": updates})
+    await db.audit_logs.insert_one({"restaurant_id": restaurant_id, "user_id": user["_id"],
+                                    "action": "RESTAURANT_UPDATE",
+                                    "detail": {k: updates.get(k) for k in
+                                               ("plan", "plan_expires_at", "name", "city")},
+                                    "created_at": now_iso()})
+    return {"message": "Restaurant mis à jour"}
+
+
+@router.delete("/restaurants/{restaurant_id}")
+async def delete_restaurant(restaurant_id: str,
+                            user: dict = Depends(require_roles(SUPER_ADMIN))):
+    doc = await db.restaurants.find_one({"_id": ObjectId(restaurant_id)})
+    if not doc or doc.get("status") == "deleted":
+        raise HTTPException(status_code=404, detail="Restaurant introuvable")
+    await db.restaurants.update_one(
+        {"_id": ObjectId(restaurant_id)},
+        {"$set": {"status": "deleted", "deleted_at": now_iso(), "updated_at": now_iso()}})
+    await db.audit_logs.insert_one({"restaurant_id": restaurant_id, "user_id": user["_id"],
+                                    "action": "RESTAURANT_DELETE", "detail": "soft-delete",
+                                    "created_at": now_iso()})
+    return {"message": "Restaurant supprimé"}
+
+
 @router.post("/restaurants")
 async def create_restaurant(body: AdminRestaurantCreate, user: dict = Depends(require_roles(SUPER_ADMIN))):
     email = body.owner_email.lower().strip()
@@ -102,4 +151,53 @@ async def create_restaurant(body: AdminRestaurantCreate, user: dict = Depends(re
 @router.get("/plans")
 async def list_plans(user: dict = Depends(require_roles(SUPER_ADMIN))):
     docs = await db.plans.find({}).to_list(100)
-    return [serialize(d) for d in docs]
+    out = []
+    for d in docs:
+        s = serialize(d)
+        s["restaurants_count"] = await plan_assignments_count(d["code"])
+        out.append(s)
+    return out
+
+
+@router.post("/plans")
+async def create_plan(body: PlanCreate, user: dict = Depends(require_roles(SUPER_ADMIN))):
+    if await db.plans.find_one({"code": body.code}):
+        raise HTTPException(status_code=400, detail="Ce code de plan existe déjà")
+    ts = now_iso()
+    doc = {"code": body.code, "name": body.name, "price": body.price,
+           "currency": body.currency, "limits": body.limits, "created_at": ts, "updated_at": ts}
+    res = await db.plans.insert_one(doc)
+    await db.audit_logs.insert_one({"user_id": user["_id"], "action": "PLAN_CREATE",
+                                    "detail": body.code, "created_at": ts})
+    return serialize({**doc, "_id": res.inserted_id})
+
+
+@router.patch("/plans/{code}")
+async def update_plan(code: str, body: PlanUpdate,
+                      user: dict = Depends(require_roles(SUPER_ADMIN))):
+    doc = await db.plans.find_one({"code": code})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Plan introuvable")
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour")
+    updates["updated_at"] = now_iso()
+    await db.plans.update_one({"code": code}, {"$set": updates})
+    await db.audit_logs.insert_one({"user_id": user["_id"], "action": "PLAN_UPDATE",
+                                    "detail": {code: list(updates.keys())}, "created_at": now_iso()})
+    return {"message": "Plan mis à jour"}
+
+
+@router.delete("/plans/{code}")
+async def delete_plan(code: str, user: dict = Depends(require_roles(SUPER_ADMIN))):
+    doc = await db.plans.find_one({"code": code})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Plan introuvable")
+    if await plan_assignments_count(code) > 0:
+        raise HTTPException(status_code=409,
+                            detail="Plan assigné à un ou plusieurs restaurants — "
+                                   "réassignez-les avant de le supprimer")
+    await db.plans.delete_one({"code": code})
+    await db.audit_logs.insert_one({"user_id": user["_id"], "action": "PLAN_DELETE",
+                                    "detail": code, "created_at": now_iso()})
+    return {"message": "Plan supprimé"}

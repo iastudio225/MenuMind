@@ -96,3 +96,30 @@ class AdminRestaurantCreate(BaseModel):
 
 class RestaurantStatusUpdate(BaseModel):
     status: str  # active | suspended
+
+
+class AdminRestaurantUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    plan: Optional[str] = None
+    plan_expires_at: Optional[str] = None  # ISO date, null = sans expiration
+
+
+class PlanCreate(BaseModel):
+    code: str = Field(min_length=2, max_length=20, pattern=r"^[A-Z][A-Z0-9_]*$")
+    name: str = Field(min_length=1)
+    price: int = Field(ge=0)
+    currency: str = "FCFA"
+    limits: Dict[str, Any] = {}
+
+
+class PlanUpdate(BaseModel):
+    name: Optional[str] = None
+    price: Optional[int] = Field(default=None, ge=0)
+    currency: Optional[str] = None
+    limits: Optional[Dict[str, Any]] = None
