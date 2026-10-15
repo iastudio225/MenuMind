@@ -4,7 +4,7 @@ from bson import ObjectId
 
 from database import db
 from models import (AdminRestaurantCreate, AdminRestaurantUpdate, RestaurantStatusUpdate,
-                    PlanCreate, PlanUpdate, serialize, now_iso,
+                    PlanCreate, PlanUpdate, UserPasswordUpdate, serialize, now_iso,
                     SUPER_ADMIN, RESTAURANT_OWNER)
 from auth import require_roles, hash_password
 from routers.auth_router import default_opening_hours
@@ -102,8 +102,8 @@ async def update_restaurant(restaurant_id: str, body: AdminRestaurantUpdate,
     await db.restaurants.update_one({"_id": ObjectId(restaurant_id)}, {"$set": updates})
     await db.audit_logs.insert_one({"restaurant_id": restaurant_id, "user_id": user["_id"],
                                     "action": "RESTAURANT_UPDATE",
-                                    "detail": {k: updates.get(k) for k in
-                                               ("plan", "plan_expires_at", "name", "city")},
+                                     "detail": {k: updates.get(k) for k in
+                                                ("plan", "plan_activated_at", "plan_expires_at", "name", "city")},
                                     "created_at": now_iso()})
     return {"message": "Restaurant mis à jour"}
 
@@ -121,6 +121,22 @@ async def delete_restaurant(restaurant_id: str,
                                     "action": "RESTAURANT_DELETE", "detail": "soft-delete",
                                     "created_at": now_iso()})
     return {"message": "Restaurant supprimé"}
+
+
+@router.patch("/users/{user_id}/password")
+async def reset_user_password(user_id: str, body: UserPasswordUpdate,
+                              user: dict = Depends(require_roles(SUPER_ADMIN))):
+    doc = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"password_hash": hash_password(body.password)}, "$inc": {"token_version": 1}})
+    await db.audit_logs.insert_one({"user_id": user["_id"],
+                                    "action": "USER_PASSWORD_RESET",
+                                    "detail": {"target_user_id": user_id, "target_email": doc["email"]},
+                                    "created_at": now_iso()})
+    return {"message": "Mot de passe réinitialisé"}
 
 
 @router.post("/restaurants")

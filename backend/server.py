@@ -18,14 +18,14 @@ from routers import (auth_router, restaurant_router, user_router, dashboard_rout
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="RestoIA API")
+app = FastAPI(title="MenuMind API")
 
 api_router = APIRouter(prefix="/api")
 
 
 @api_router.get("/")
 async def root():
-    return {"message": "RestoIA API", "status": "ok"}
+    return {"message": "MenuMind API", "status": "ok"}
 
 
 @api_router.get("/plans")

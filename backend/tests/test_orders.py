@@ -1,5 +1,5 @@
 """
-RestoIA Phase C — Order engine backend tests.
+MenuMind Phase C — Order engine backend tests.
 Covers: public cart (CRUD + server-side pricing), validate (price change / availability /
 required groups), delivery zones (public), order creation with snapshots + idempotency,
 revalidation at order-time (409), tracking (public, sanitized), dashboard orders

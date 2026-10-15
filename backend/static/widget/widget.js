@@ -1,4 +1,4 @@
-/* RestoIA — chargeur du widget embarquable.
+/* MenuMind — chargeur du widget embarquable.
    Usage : <script src="https://API_ORIGIN/widget.js" data-restaurant="rest_xxx"></script>
    Chaque balise script = un widget isolé (iframe same-origin API, zéro conflit CSS/JS hôte). */
 (function () {

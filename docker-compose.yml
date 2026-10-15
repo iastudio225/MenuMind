@@ -1,4 +1,4 @@
-# Déploiement Coolify — RestoIA (backend + frontend + MongoDB)
+# Déploiement Coolify — MenuMind (backend + frontend + MongoDB)
 # Usage dans Coolify : ressource « Docker Compose », repo git, ce fichier à la racine.
 # Les variables ${...} sont injectées depuis l'UI Coolify (onglet Environment).
 

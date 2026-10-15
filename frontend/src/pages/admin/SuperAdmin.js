@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Building2, CheckCircle2, PauseCircle, Wallet, ShoppingBag, LogOut,
-  Plus, Loader2, Shield, Eye, Pencil, Trash2, KeyRound, Copy, XCircle,
+  Plus, Loader2, Eye, Pencil, Trash2, KeyRound, Copy, XCircle,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import BrandLogo from "@/components/BrandLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -177,6 +179,9 @@ export default function SuperAdmin() {
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [planEditing, setPlanEditing] = useState(null);
   const [planDelete, setPlanDelete] = useState(null);
+  const [pwTarget, setPwTarget] = useState(null); // {id, name, email}
+  const [pwValue, setPwValue] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
 
   const load = async () => {
     try {
@@ -236,6 +241,7 @@ export default function SuperAdmin() {
       name: r.name || "", description: r.description || "", phone: r.phone || "",
       whatsapp: r.whatsapp || "", email: r.email || "", address: r.address || "",
       city: r.city || "", plan: r.plan || "STARTER",
+      plan_activated_at: r.plan_activated_at ? r.plan_activated_at.slice(0, 10) : "",
       plan_expires_at: r.plan_expires_at ? r.plan_expires_at.slice(0, 10) : "",
     });
     setEditOpen(true);
@@ -244,7 +250,11 @@ export default function SuperAdmin() {
   const submitEdit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const payload = { ...editForm, plan_expires_at: editForm.plan_expires_at || null };
+    const payload = {
+      ...editForm,
+      plan_activated_at: editForm.plan_activated_at || null,
+      plan_expires_at: editForm.plan_expires_at || null,
+    };
     try {
       await api.patch(`/admin/restaurants/${editTarget.id}`, payload);
       toast.success("Restaurant mis à jour");
@@ -265,6 +275,21 @@ export default function SuperAdmin() {
       load();
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    }
+  };
+
+  const submitPasswordReset = async (e) => {
+    e.preventDefault();
+    setPwSaving(true);
+    try {
+      await api.patch(`/admin/users/${pwTarget.id}/password`, { password: pwValue });
+      toast.success(`Mot de passe de ${pwTarget.name} réinitialisé`);
+      setPwTarget(null);
+      setPwValue("");
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    } finally {
+      setPwSaving(false);
     }
   };
 
@@ -293,8 +318,8 @@ export default function SuperAdmin() {
     <div className="min-h-screen bg-background">
       <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-8">
         <div className="flex items-center gap-2 font-heading font-bold text-lg">
-          <span className="w-8 h-8 rounded-lg bg-[#0F172A] text-white grid place-items-center"><Shield className="w-4 h-4 text-primary" /></span>
-          RestoIA <span className="text-muted-foreground font-normal text-sm">· Super Admin</span>
+          <BrandLogo size="lg" />
+          MenuMind <span className="text-muted-foreground font-normal text-sm">· Super Admin</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
@@ -510,6 +535,9 @@ export default function SuperAdmin() {
                 <div>
                   <p className="text-muted-foreground">Licence</p>
                   <p><Badge variant="secondary">{detail.plan}</Badge>
+                    {detail.plan_activated_at && (
+                      <span className="ml-2 text-xs text-muted-foreground">activée le {detail.plan_activated_at.slice(0, 10)}</span>
+                    )}
                     {detail.plan_expires_at && (
                       licenseExpired(detail.plan_expires_at)
                         ? <Badge variant="destructive" className="ml-2">Expirée</Badge>
@@ -533,7 +561,14 @@ export default function SuperAdmin() {
                 {(detail.users || []).map((u) => (
                   <div key={u.id} className="flex items-center justify-between border-t border-border py-2">
                     <span>{u.name} <span className="text-muted-foreground">({u.email})</span></span>
-                    <Badge variant="outline">{u.role}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{u.role}</Badge>
+                      <Button size="sm" variant="ghost" title="Réinitialiser le mot de passe"
+                        onClick={() => { setPwTarget({ id: u.id, name: u.name, email: u.email }); setPwValue(""); }}
+                        data-testid={`reset-pw-btn-${u.id}`}>
+                        <Lock className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -567,7 +602,7 @@ export default function SuperAdmin() {
               </div>
               <div className="space-y-2"><Label>Email restaurant</Label><Input type="email" value={editForm.email}
                 onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} data-testid="edit-email" /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="inline-flex items-center gap-1"><KeyRound className="w-3 h-3" /> Plan (licence)</Label>
                   <Select value={editForm.plan} onValueChange={(v) => setEditForm((f) => ({ ...f, plan: v }))}>
@@ -578,6 +613,12 @@ export default function SuperAdmin() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Activation licence</Label>
+                  <Input type="date" value={editForm.plan_activated_at}
+                    onChange={(e) => setEditForm((f) => ({ ...f, plan_activated_at: e.target.value }))}
+                    data-testid="edit-plan-activated" />
                 </div>
                 <div className="space-y-2">
                   <Label>Expiration licence</Label>
@@ -641,6 +682,30 @@ export default function SuperAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog réinitialisation mot de passe */}
+      <Dialog open={!!pwTarget} onOpenChange={(o) => { if (!o) { setPwTarget(null); setPwValue(""); } }}>
+        <DialogContent data-testid="reset-pw-dialog">
+          <DialogHeader>
+            <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+            <DialogDescription>
+              {pwTarget?.name} ({pwTarget?.email}) — la session active sera déconnectée.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitPasswordReset} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nouveau mot de passe (min. 6 caractères)</Label>
+              <Input type="password" required minLength={6} value={pwValue}
+                onChange={(e) => setPwValue(e.target.value)} data-testid="reset-pw-input" />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={pwSaving} data-testid="reset-pw-submit">
+                {pwSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Lock className="w-4 h-4 mr-1" /> Réinitialiser</>}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

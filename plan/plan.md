@@ -1,4 +1,4 @@
-# Phase D — Reprise de l'Agent IA conversationnel (RestoIA)
+# Phase D — Reprise de l'Agent IA conversationnel (MenuMind)
 
 Un agent IA (Gemini) qui prend la commande d'un client en langage naturel et la transforme
 en une vraie commande calculée et enregistrée par le backend. Cette reprise finit ce qui a été

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import BrandLogo from "@/components/BrandLogo";
 import api from "@/lib/api";
 import { formatFCFA } from "@/lib/format";
 import {
@@ -58,10 +59,8 @@ export default function Landing() {
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border">
         <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex items-center justify-between h-16">
           <div className="flex items-center gap-2 font-heading font-bold text-xl" data-testid="brand-logo">
-            <span className="w-9 h-9 rounded-xl bg-primary text-primary-foreground grid place-items-center">
-              <Bot className="w-5 h-5" />
-            </span>
-            Resto<span className="text-primary">IA</span>
+            <BrandLogo size="lg" />
+            Menu<span className="text-primary">Mind</span>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors" data-testid="nav-features-link">Fonctionnalités</a>
@@ -93,7 +92,7 @@ export default function Landing() {
               Votre réceptionniste <span className="text-primary">IA</span> qui prend vos commandes 24h/24
             </h1>
             <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-xl">
-              Ne manquez plus aucune commande. RestoIA comprend vos clients en langage naturel,
+              Ne manquez plus aucune commande. MenuMind comprend vos clients en langage naturel,
               consulte votre vrai menu, construit le panier et crée la commande — automatiquement.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
@@ -232,7 +231,7 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} RestoIA — Réceptionniste IA pour restaurants. Abidjan, Côte d'Ivoire.
+        © {new Date().getFullYear()} MenuMind — Réceptionniste IA pour restaurants. Abidjan, Côte d'Ivoire.
       </footer>
     </div>
   );

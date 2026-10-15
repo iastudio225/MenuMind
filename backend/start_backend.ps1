@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  Supervision Uvicorn RestoIA (D1.28) : lance server:app et consigne dans le journal de vie
+  Supervision Uvicorn MenuMind (D1.28) : lance server:app et consigne dans le journal de vie
   le demarrage et la fin reels du processus supervise (pas du shell qui l'a lance).
   Aucun redemarrage automatique. Aucun secret ni valeur de connexion journalise.
   Aucun processus preexistant n'est jamais arrete.

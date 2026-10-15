@@ -1,5 +1,5 @@
 """
-RestoIA D1.10 — BytezProvider adapter unit tests (no network, no DB).
+MenuMind D1.10 — BytezProvider adapter unit tests (no network, no DB).
 
 Covers: AIProvider contract, Bytez payload shape, output extraction,
 HTTP error mapping (401/402/429/5xx/network), and AI_GATEWAY/AI_MODEL

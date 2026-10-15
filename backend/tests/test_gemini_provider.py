@@ -1,5 +1,5 @@
 """
-RestoIA D1.20 — GeminiProvider robustness unit tests (mocked, no network, no DB).
+MenuMind D1.20 — GeminiProvider robustness unit tests (mocked, no network, no DB).
 
 Covers: AIProvider contract, generation config (timeout + max_output_tokens),
 structured error mapping (timeout 504, quota 429, invalid 400, auth 503,

@@ -1,5 +1,5 @@
 """
-RestoIA Phase A backend tests
+MenuMind Phase A backend tests
 Covers: Auth (register, login, me, logout, refresh, brute force, password reset),
 Tenant isolation, Roles/Permissions, Super admin, Dashboard overview.
 """

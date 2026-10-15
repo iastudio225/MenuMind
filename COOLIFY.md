@@ -34,7 +34,7 @@ Architecture déployée : `docker-compose.yml` à la racine (backend FastAPI + f
 
 - `GET https://<backend>/widget.js` → **200**, `application/javascript`, contient `data-restaurant`
 - `GET https://<backend>/widget-frame.html` → **200**, `text/html`
-- `GET https://<backend>/api/` → 200 JSON `{"message": "RestoIA API"}`
+- `GET https://<backend>/api/` → 200 JSON `{"message": "MenuMind API"}`
 - Frontend : connexion avec `ADMIN_EMAIL` / `ADMIN_PASSWORD`
 - Settings → Widget : snippet d'intégration avec l'URL du backend public
 

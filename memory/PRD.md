@@ -1,4 +1,4 @@
-# RestoIA — Réceptionniste IA 24/7 pour restaurants (SaaS B2B multi-tenant)
+# MenuMind — Réceptionniste IA 24/7 pour restaurants (SaaS B2B multi-tenant)
 
 ## Problème / Vision
 SaaS B2B pour restaurants (marché Côte d'Ivoire, devise FCFA). Un agent IA prend les commandes des clients en langage naturel, consulte le vrai menu du restaurant, construit un panier, calcule le total et crée une commande exploitable. Produit multi-tenant commercialisable auprès de milliers de restaurants, chaque restaurant strictement isolé. Premier canal : widget web intégrable. Architecture prête pour WhatsApp, paiement, livraison, voix, mobile.

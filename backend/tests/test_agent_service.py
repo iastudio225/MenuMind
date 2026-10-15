@@ -1,5 +1,5 @@
 """
-RestoIA D1.21 — Agent orchestration tests (mocked services, no network, no real DB).
+MenuMind D1.21 — Agent orchestration tests (mocked services, no network, no real DB).
 
 Covers: greeting/question scenarios without useless tool calls, updated-data
 tool routing, server-side prices/totals, order path with hard guards, tool

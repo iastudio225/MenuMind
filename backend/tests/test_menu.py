@@ -1,5 +1,5 @@
 """
-RestoIA Phase B — Menu backend tests.
+MenuMind Phase B — Menu backend tests.
 Covers: categories/items/option-groups CRUD, availability, reorder,
 validations, permissions (OWNER/MANAGER/STAFF/SUPER_ADMIN), tenant isolation,
 and public catalog.

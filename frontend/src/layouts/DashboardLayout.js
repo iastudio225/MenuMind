@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import {
-  Bot, LayoutDashboard, ShoppingBag, UtensilsCrossed, Users, Truck,
+  LayoutDashboard, ShoppingBag, UtensilsCrossed, Users, Truck,
   MessageSquare, Settings, LogOut, Menu as MenuIcon, X, UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import BrandLogo from "@/components/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_LABELS } from "@/lib/format";
 import api from "@/lib/api";
@@ -40,8 +41,8 @@ export default function DashboardLayout() {
   const SidebarContent = () => (
     <>
       <div className="flex items-center gap-2 font-heading font-bold text-lg px-5 h-16 border-b border-border">
-        <span className="w-8 h-8 rounded-lg bg-primary text-primary-foreground grid place-items-center"><Bot className="w-5 h-5" /></span>
-        Resto<span className="text-primary">IA</span>
+        <BrandLogo size="sm" />
+        Menu<span className="text-primary">Mind</span>
       </div>
       <div className="px-4 py-4">
         <div className="rounded-xl bg-secondary px-3 py-2.5">
@@ -94,8 +95,8 @@ export default function DashboardLayout() {
       <div className="flex-1 lg:ml-64">
         <header className="lg:hidden h-16 flex items-center justify-between px-4 border-b border-border bg-card">
           <div className="flex items-center gap-2 font-heading font-bold">
-            <span className="w-8 h-8 rounded-lg bg-primary text-primary-foreground grid place-items-center"><Bot className="w-5 h-5" /></span>
-            RestoIA
+            <BrandLogo size="sm" />
+            MenuMind
           </div>
           <Button variant="ghost" size="icon" onClick={() => setOpen((o) => !o)} data-testid="mobile-menu-toggle">
             {open ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}

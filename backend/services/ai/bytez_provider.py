@@ -1,6 +1,6 @@
 """Bytez gateway implementation of AIProvider (D1.10).
 
-Routes RestoIA's provider-independent ``AIProvider`` contract through the
+Routes MenuMind's provider-independent ``AIProvider`` contract through the
 Bytez unified API. The business pipeline (``_parse_action`` / tools / order
 engine) only ever sees the returned ``str`` and is untouched by this adapter.
 

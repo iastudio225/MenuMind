@@ -107,7 +107,12 @@ class AdminRestaurantUpdate(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     plan: Optional[str] = None
+    plan_activated_at: Optional[str] = None  # ISO date, null = non définie
     plan_expires_at: Optional[str] = None  # ISO date, null = sans expiration
+
+
+class UserPasswordUpdate(BaseModel):
+    password: str = Field(min_length=6)
 
 
 class PlanCreate(BaseModel):
