@@ -1,0 +1,50 @@
+# Déploiement Coolify — RestoIA (backend + frontend + MongoDB)
+# Usage dans Coolify : ressource « Docker Compose », repo git, ce fichier à la racine.
+# Les variables ${...} sont injectées depuis l'UI Coolify (onglet Environment).
+
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      # Base de données (interne au compose, service "mongo")
+      MONGO_URL: mongodb://mongo:27017
+      DB_NAME: ${DB_NAME:-restoia}
+      # Sécurité — OBLIGATOIRE à définir dans Coolify
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant — définir dans Coolify}
+      # CORS : origin publique du frontend (ex. https://votre-domaine)
+      FRONTEND_URL: ${FRONTEND_URL:?FRONTEND_URL manquant — définir dans Coolify}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # Seed super-admin (changers en production !)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Fournisseur IA (gemini par défaut ; aucune clé = réponses d'erreur propres)
+      AI_GATEWAY: ${AI_GATEWAY:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      AI_MODEL: ${AI_MODEL:-google/gemini-2.5-flash}
+      BYTEZ_API_KEY: ${BYTEZ_API_KEY:-}
+      BYTEZ_PROVIDER_KEY: ${BYTEZ_PROVIDER_KEY:-}
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # URL publique du backend — brûlée dans le bundle React au build
+        REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL:?REACT_APP_BACKEND_URL manquant — définir dans Coolify}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    # Ne jamais exposer 27017 publiquement
+
+volumes:
+  mongo_data:
