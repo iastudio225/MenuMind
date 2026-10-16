@@ -42,26 +42,100 @@ def _log(event, **kw):
     logger.info("AI_%s %s", event, {k: v for k, v in kw.items()})
 
 
-async def _get_or_create_conversation(db, restaurant_id: str, conversation_id: Optional[str]) -> dict:
+def _require_open_cart(cart: dict) -> None:
+    """D1.50: a provided/shared cart must exist AND still be open.
+
+    Carts are always created with status="open" (order_service.create_cart);
+    any other value (typically "ordered") means the cart is locked. Refusing
+    here (409) prevents an AI conversation from silently riding a cart that
+    was already ordered through the visual checkout."""
+    if cart.get("status") != "open":
+        raise HTTPException(
+            status_code=409,
+            detail="Ce panier n'est plus utilisable (commande déjà passée ou fermée).")
+
+
+async def _link_existing_conversation_to_cart(db, restaurant_id: str, conv: dict,
+                                              provided_cart_id: str) -> None:
+    """D1.50 rules for re-associating an EXISTING conversation to another cart.
+
+    Safe only when: the conversation has no order yet, the provided cart
+    belongs to this restaurant and is open, and the cart currently attached to
+    the conversation is either empty or already ordered (nothing left to lose).
+    Anything else is a hard 409 — never a silent switch."""
+    current_cart_id = conv.get("cart_id")
+    if current_cart_id == provided_cart_id:
+        return  # already on that cart — continue normally
+    if conv.get("order_reference"):
+        # An order was already created on this conversation: its idempotency
+        # key (conv:...:cart) must never be reused with another cart.
+        raise HTTPException(
+            status_code=409,
+            detail="Une commande a déjà été créée dans cette conversation. Ouvrez une nouvelle conversation pour commander à nouveau.")
+    cart = await svc.get_cart(db, provided_cart_id, restaurant_id)  # 404 unknown / other restaurant
+    _require_open_cart(cart)
+    current = None
+    if current_cart_id:
+        try:
+            current = await svc.get_cart(db, current_cart_id, restaurant_id)
+        except HTTPException as e:
+            if e.status_code != 404:
+                raise
+            # Previous cart no longer exists: nothing left to protect.
+            current = None
+    if current and current.get("status") == "open" and current.get("items"):
+        # Open AND non-empty: switching would silently discard real articles.
+        raise HTTPException(
+            status_code=409,
+            detail="Votre assistant utilise déjà un panier avec des articles. Validez-le ou démarrez une nouvelle conversation.")
+    conv["cart_id"] = provided_cart_id
+    await db.ai_conversations.update_one(
+        {"_id": conv["_id"]},
+        {"$set": {"cart_id": provided_cart_id, "updated_at": svc.now_iso()}})
+    _log("CART_RELINKED", conversation=conv["conversation_id"], cart=provided_cart_id)
+
+
+async def _get_or_create_conversation(db, restaurant_id: str, conversation_id: Optional[str],
+                                      provided_cart_id: Optional[str] = None) -> dict:
     if conversation_id:
         conv = await db.ai_conversations.find_one({"conversation_id": conversation_id})
         if conv and conv["restaurant_id"] == restaurant_id:
+            if provided_cart_id:
+                await _link_existing_conversation_to_cart(db, restaurant_id, conv, provided_cart_id)
             return conv
         # conversation from another tenant or unknown -> start fresh (tenant isolation)
-    cart = await svc.create_cart(db, restaurant_id)
+    if provided_cart_id:
+        # D1.50 shared cart: reuse the visual cart instead of creating one.
+        # get_cart(db, cart_id, restaurant_id) 404s on unknown OR foreign carts
+        # with the same message, so existence is never disclosed across tenants.
+        cart = await svc.get_cart(db, provided_cart_id, restaurant_id)
+        _require_open_cart(cart)
+        cart_id = cart["cart_id"]
+    else:
+        cart = await svc.create_cart(db, restaurant_id)
+        cart_id = cart["cart_id"]
     conv = {
         "conversation_id": secrets.token_urlsafe(16), "restaurant_id": restaurant_id,
-        "cart_id": cart["cart_id"], "customer_id": None, "state": "DISCOVERY",
+        "cart_id": cart_id, "customer_id": None, "state": "DISCOVERY",
         "draft": {}, "customer": {}, "order_reference": None, "order_tracking_token": None,
         "messages": [], "created_at": svc.now_iso(), "updated_at": svc.now_iso(),
     }
     await db.ai_conversations.insert_one(conv)
     _log("CONVERSATION_STARTED", conversation=conv["conversation_id"], restaurant=restaurant_id)
+    if provided_cart_id:
+        _log("CART_LINKED", conversation=conv["conversation_id"], cart=cart_id)
     return conv
 
 
 def _build_system_prompt(restaurant, menu, zones, cart_view, draft, customer, has_order) -> str:
-    menu_json = json.dumps(menu["categories"], ensure_ascii=False)
+    # D1.50: the public catalogue now carries image_url per item — strip it
+    # from the model context (images are useless to the text agent and would
+    # only inflate the prompt tokens).
+    menu_json = json.dumps(
+        [{**c, "items": [{k: v for k, v in it.items() if k != "image_url"}
+                         for it in c.get("items", [])]}
+         for c in menu["categories"]],
+        ensure_ascii=False)
     zones_json = json.dumps([{"id": z["id"], "name": z["name"], "fee": z["fee"]} for z in zones], ensure_ascii=False)
     cart_json = json.dumps(cart_view, ensure_ascii=False)
     draft_json = json.dumps(draft or {}, ensure_ascii=False)
@@ -161,7 +235,7 @@ def _parse_action(raw: str) -> dict:
 
 
 async def process_message(db, restaurant_public_id: str, conversation_id: Optional[str],
-                          user_message: str, provider) -> dict:
+                          user_message: str, provider, cart_id: Optional[str] = None) -> dict:
     if not user_message or not user_message.strip():
         raise HTTPException(status_code=400, detail="Message vide")
     if len(user_message) > MAX_MESSAGE_LEN:
@@ -172,7 +246,7 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     # Quota check right after server-side resolution: unknown/inactive public
     # ids already raised 404 above (no counter is created for them).
     quota.check_request(rid)
-    conv = await _get_or_create_conversation(db, rid, conversation_id)
+    conv = await _get_or_create_conversation(db, rid, conversation_id, cart_id)
 
     transcript = list(conv.get("messages", []))
     transcript.append({"role": "user", "content": user_message.strip()})
@@ -241,4 +315,4 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     final_cart["order_type"] = draft.get("order_type")
 
     return {"conversation_id": conv["conversation_id"], "message": final_message,
-            "cart": final_cart, "order": order_summary}
+            "cart": final_cart, "cart_id": conv["cart_id"], "order": order_summary}

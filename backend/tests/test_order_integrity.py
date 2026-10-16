@@ -20,9 +20,11 @@ integration suite tests/test_orders.py, not run here)."""
 import json
 
 import pytest
+from bson import ObjectId
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 
+from services import order_service as real_svc
 from services.ai import agent_service as ag
 from services.ai import quota
 from services.ai import tools as tools_mod
@@ -431,3 +433,205 @@ def test_insert_race_on_unique_index_returns_winner(svc):
                                    delivery_zone_id="z1", idempotency_key="conv:conv-1:cart-1"))
     assert order2["reference"] == "CMD-T1"
     assert len(db.orders.docs) == 1  # unique index blocked the duplicate
+
+
+# =============== D1.50 — REAL order_service: ordered-cart guards ===============
+# The Svc fake above does NOT carry the new open-cart guard: these tests
+# exercise the REAL order_service functions against in-memory collections
+# (no MongoDB, no network). A cart whose status is not "open" must refuse
+# every mutation, the validation and any NEW order, while a legitimate
+# idempotent retry of an already-processed request still returns the
+# existing order instead of a 409.
+
+class _RCursor:
+    def __init__(self, docs):
+        self._docs = list(docs)
+
+    def sort(self, key, direction=1):
+        self._docs.sort(key=lambda d: d.get(key) or 0, reverse=(direction == -1))
+        return self
+
+    async def to_list(self, limit):
+        return self._docs[:limit]
+
+
+class _InsertResult:
+    """Mirrors the Motor insert_one result (upsert_customer/create_order read inserted_id)."""
+
+    def __init__(self, inserted_id):
+        self.inserted_id = inserted_id
+
+
+class _RCol:
+    """Minimal Mongo surface for the REAL order_service (find/insert/update
+    + the sparse unique index + find_one_and_update for counters)."""
+
+    def __init__(self, unique=()):
+        self.docs = []
+        self.unique = unique
+
+    def find(self, q=None):
+        q = q or {}
+        return _RCursor([d for d in self.docs if all(d.get(k) == v for k, v in q.items())])
+
+    async def find_one(self, q):
+        for d in self.docs:
+            if all(d.get(k) == v for k, v in q.items()):
+                return d
+        return None
+
+    async def insert_one(self, doc):
+        for keys in self.unique:
+            vals = [doc.get(k) for k in keys]
+            if all(v is not None for v in vals):
+                for d in self.docs:
+                    if all(d.get(k) == v for k, v in zip(keys, vals)):
+                        raise DuplicateKeyError(f"E11000 duplicate key: {keys}")
+        doc.setdefault("_id", f"oid-{len(self.docs) + 1}")
+        self.docs.append(doc)
+        return _InsertResult(doc["_id"])
+
+    async def update_one(self, q, update):
+        doc = await self.find_one(q)
+        if doc is None:
+            return
+        if "$set" in update:
+            doc.update(update["$set"])
+        if "$push" in update:
+            for k, v in update["$push"].items():
+                doc.setdefault(k, []).append(v)
+        if "$pull" in update:
+            for k, cond in update["$pull"].items():
+                doc[k] = [x for x in doc.get(k, [])
+                          if not all(x.get(ck) == cv for ck, cv in cond.items())]
+
+    async def find_one_and_update(self, q, update, upsert=False, return_document=None):
+        doc = await self.find_one(q)
+        if doc is None and upsert:
+            doc = dict(q)
+            self.docs.append(doc)
+        if "$inc" in update:
+            for k, v in update["$inc"].items():
+                doc[k] = doc.get(k, 0) + v
+        return doc
+
+
+class RealSvcDB:
+    """In-memory database for the REAL order_service (D1.50 guards)."""
+
+    RID = "652f0000000000000000000a"
+    ITEM_ID = "652f0000000000000000000b"
+
+    def __init__(self):
+        self.carts = _RCol()
+        self.menu_items = _RCol()
+        self.menu_options = _RCol()
+        self.menu_option_groups = _RCol()
+        self.restaurants = _RCol()
+        self.orders = _RCol(unique=[("restaurant_id", "idempotency_key")])
+        self.customers = _RCol()
+        self.delivery_zones = _RCol()
+        self.counters = _RCol()
+        self.order_status_history = _RCol()
+        self.audit_logs = _RCol()
+        self.restaurants.docs.append({"_id": ObjectId(self.RID),
+                                      "public_id": "rest_demo_chezawa", "name": "Chez Awa",
+                                      "status": "active", "currency": "FCFA", "widget": {}})
+        self.menu_items.docs.append({"_id": ObjectId(self.ITEM_ID), "restaurant_id": self.RID,
+                                     "name": "Poulet braisé", "price": 5000, "active": True,
+                                     "available": True, "option_group_ids": []})
+
+
+def _seed_cart(db, status="open", items=None):
+    cart = {"_id": "cart-doc-1", "cart_id": "cart-1", "restaurant_id": RealSvcDB.RID,
+            "status": status, "customer_id": None,
+            "items": items if items is not None else []}
+    db.carts.docs.append(cart)
+    return cart
+
+
+def _line(**over):
+    l = {"cart_item_id": "ci-1", "item_id": RealSvcDB.ITEM_ID, "quantity": 1,
+         "option_ids": [], "expected_unit_price": 5000, "expected_options_total": 0}
+    l.update(over)
+    return l
+
+
+def test_real_mutation_on_open_cart_accepted():
+    db = RealSvcDB()
+    cart = _seed_cart(db)
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, cart, RealSvcDB.ITEM_ID, 2, []))
+    assert len(out["items"]) == 1
+    assert out["status"] == "open"
+    line_id = out["items"][0]["cart_item_id"]
+    out = _run(real_svc.update_cart_item(db, RealSvcDB.RID, out, line_id, 3, None))
+    assert out["items"][0]["quantity"] == 3
+    out = _run(real_svc.remove_cart_item(db, out, line_id))
+    assert out["items"] == []
+
+
+def test_real_mutations_on_ordered_cart_refused():
+    db = RealSvcDB()
+    cart = _seed_cart(db, status="ordered", items=[_line()])
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.add_to_cart(db, RealSvcDB.RID, cart, RealSvcDB.ITEM_ID, 1, []))
+    assert e.value.status_code == 409
+    assert "plus utilisable" in e.value.detail
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.update_cart_item(db, RealSvcDB.RID, cart, "ci-1", 5, None))
+    assert e.value.status_code == 409
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.remove_cart_item(db, cart, "ci-1"))
+    assert e.value.status_code == 409
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.clear_cart(db, cart))
+    assert e.value.status_code == 409
+    assert len(db.carts.docs[0]["items"]) == 1  # nothing was mutated
+
+
+def test_real_validate_cart_on_ordered_cart_refused():
+    db = RealSvcDB()
+    cart = _seed_cart(db, status="ordered", items=[_line()])
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.validate_cart(db, RealSvcDB.RID, cart))
+    assert e.value.status_code == 409
+    assert "plus utilisable" in e.value.detail
+
+
+def test_real_create_order_on_ordered_cart_refused_for_new_request():
+    db = RealSvcDB()
+    cart = _seed_cart(db, status="ordered", items=[_line()])
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.create_order(db, RealSvcDB.RID, cart,
+                                   {"first_name": "Jean", "phone": "0707070707"},
+                                   "PICKUP", idempotency_key="other-key"))
+    assert e.value.status_code == 409
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.create_order(db, RealSvcDB.RID, cart,
+                                   {"first_name": "Jean", "phone": "0707070707"}, "PICKUP"))
+    assert e.value.status_code == 409
+    assert db.orders.docs == []  # no order was created
+
+
+def test_real_create_order_nominal_then_idempotent_retry_then_new_order_refused():
+    """The guard must never break a legitimate retry: same idempotency key on
+    an already-ordered cart still returns the existing order; only a NEW
+    request (different/absent key) is refused."""
+    db = RealSvcDB()
+    cart = _seed_cart(db, items=[_line()])
+    customer = {"first_name": "Jean", "phone": "0707070707"}
+    order1 = _run(real_svc.create_order(db, RealSvcDB.RID, cart, customer, "PICKUP",
+                                        idempotency_key="k1"))
+    assert order1["status"] == "PENDING"
+    assert db.carts.docs[0]["status"] == "ordered"  # cart locked after order
+    # legitimate retry, same key -> same order, NOT a 409
+    order2 = _run(real_svc.create_order(db, RealSvcDB.RID, cart, customer, "PICKUP",
+                                        idempotency_key="k1"))
+    assert order2["reference"] == order1["reference"]
+    assert len(db.orders.docs) == 1
+    # a NEW request on the now-ordered cart is refused
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.create_order(db, RealSvcDB.RID, cart, customer, "PICKUP",
+                                   idempotency_key="k2"))
+    assert e.value.status_code == 409
+    assert len(db.orders.docs) == 1  # still exactly one order

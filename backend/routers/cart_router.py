@@ -30,6 +30,9 @@ async def public_menu(restaurant_public_id: str):
     data["restaurant"]["currency"] = r.get("currency", "FCFA")
     data["restaurant"]["logo"] = r.get("logo", "")
     data["restaurant"]["welcome_message"] = r.get("widget", {}).get("welcome_message", "")
+    # D1.50: widget theming for the public menu — same pattern as welcome_message,
+    # only the public widget config is read, never private restaurant fields.
+    data["restaurant"]["primary_color"] = r.get("widget", {}).get("primary_color", "")
     return data
 
 
@@ -50,7 +53,7 @@ async def create_cart(body: CreateCartBody):
 async def get_cart(cart_id: str):
     cart = await svc.get_cart(db, cart_id)
     view = await svc.calculate_cart(db, cart["restaurant_id"], cart)
-    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], **view}
+    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], "status": cart["status"], **view}
 
 
 @router.post("/cart/{cart_id}/items")
@@ -58,7 +61,7 @@ async def add_item(cart_id: str, body: AddItemBody):
     cart = await svc.get_cart(db, cart_id)
     cart = await svc.add_to_cart(db, cart["restaurant_id"], cart, body.item_id, body.quantity, body.option_ids or [])
     view = await svc.calculate_cart(db, cart["restaurant_id"], cart)
-    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], **view}
+    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], "status": cart["status"], **view}
 
 
 @router.patch("/cart/{cart_id}/items/{cart_item_id}")
@@ -66,7 +69,7 @@ async def update_item(cart_id: str, cart_item_id: str, body: UpdateItemBody):
     cart = await svc.get_cart(db, cart_id)
     cart = await svc.update_cart_item(db, cart["restaurant_id"], cart, cart_item_id, body.quantity, body.option_ids)
     view = await svc.calculate_cart(db, cart["restaurant_id"], cart)
-    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], **view}
+    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], "status": cart["status"], **view}
 
 
 @router.delete("/cart/{cart_id}/items/{cart_item_id}")
@@ -74,7 +77,7 @@ async def remove_item(cart_id: str, cart_item_id: str):
     cart = await svc.get_cart(db, cart_id)
     cart = await svc.remove_cart_item(db, cart, cart_item_id)
     view = await svc.calculate_cart(db, cart["restaurant_id"], cart)
-    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], **view}
+    return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], "status": cart["status"], **view}
 
 
 @router.delete("/cart/{cart_id}")

@@ -42,6 +42,9 @@ def _rate_limit(ip: str):
 class ChatBody(BaseModel):
     restaurant_public_id: str
     conversation_id: Optional[str] = None
+    # D1.50: panier partagé — le menu visuel crée le panier et passe son
+    # cart_id ; le backend valide existence/restaurant/statut avant liaison.
+    cart_id: Optional[str] = Field(default=None, max_length=64)
     message: str = Field(min_length=1, max_length=1000)
 
 
@@ -51,7 +54,8 @@ async def chat(body: ChatBody, request: Request):
     _rate_limit(ip)
     provider = get_configured_provider()
     return await agent_service.process_message(
-        db, body.restaurant_public_id, body.conversation_id, body.message, provider)
+        db, body.restaurant_public_id, body.conversation_id, body.message, provider,
+        cart_id=body.cart_id)
 
 
 # ---- Console de test dashboard (authenticated, tenant derive de la session) ----

@@ -88,6 +88,7 @@ async def get_available_menu(db, restaurant_id: str) -> dict:
                                  "available": o.get("available", True)} for o in options_by_group.get(gid, [])],
                 })
             item_list.append({"id": str(it["_id"]), "name": it["name"], "description": it.get("description", ""),
+                              "image_url": it.get("image_url") or it.get("image", ""),
                               "price": it.get("price", 0), "available": it.get("available", True), "options": opt_groups})
         out.append({"id": str(c["_id"]), "name": c["name"], "items": item_list})
     return {"restaurant": {"public_id": (await get_restaurant(db, restaurant_id))["public_id"],
@@ -95,6 +96,20 @@ async def get_available_menu(db, restaurant_id: str) -> dict:
 
 
 # ---------------- CART ----------------
+def _require_open_cart(cart: dict) -> None:
+    """D1.50: an ordered/locked cart is immutable.
+
+    Refuses every mutation (add/update/remove/clear), the validation and any
+    new order attempt with a 409. Public cart routes AND the AI tools share
+    these services, so one guard covers both paths. create_order calls the
+    idempotency pre-check BEFORE this guard: a legitimate retry of an
+    already-processed request still returns the existing order instead of a
+    409. Carts are always created with status="open" (see create_cart)."""
+    if cart.get("status") != "open":
+        raise HTTPException(status_code=409,
+                            detail="Ce panier n'est plus utilisable (commande déjà passée ou fermée).")
+
+
 async def create_cart(db, restaurant_id: str, session_id: Optional[str] = None) -> dict:
     ts = now_iso()
     doc = {"cart_id": secrets.token_urlsafe(24), "restaurant_id": restaurant_id, "session_id": session_id,
@@ -135,6 +150,7 @@ async def _validate_options_for_item(db, restaurant_id: str, item: dict, option_
 
 
 async def add_to_cart(db, restaurant_id: str, cart: dict, item_id: str, quantity: int, option_ids: List[str]) -> dict:
+    _require_open_cart(cart)
     if quantity < 1:
         raise HTTPException(status_code=400, detail="Quantité invalide")
     item = await _resolve_item(db, restaurant_id, item_id)
@@ -155,6 +171,7 @@ async def add_to_cart(db, restaurant_id: str, cart: dict, item_id: str, quantity
 
 async def update_cart_item(db, restaurant_id: str, cart: dict, cart_item_id: str,
                            quantity: Optional[int], option_ids: Optional[List[str]]) -> dict:
+    _require_open_cart(cart)
     line = next((i for i in cart.get("items", []) if i["cart_item_id"] == cart_item_id), None)
     if not line:
         raise HTTPException(status_code=404, detail="Ligne de panier introuvable")
@@ -173,12 +190,14 @@ async def update_cart_item(db, restaurant_id: str, cart: dict, cart_item_id: str
 
 
 async def remove_cart_item(db, cart: dict, cart_item_id: str) -> dict:
+    _require_open_cart(cart)
     await db.carts.update_one({"_id": cart["_id"]},
                               {"$pull": {"items": {"cart_item_id": cart_item_id}}, "$set": {"updated_at": now_iso()}})
     return await get_cart(db, cart["cart_id"])
 
 
 async def clear_cart(db, cart: dict) -> dict:
+    _require_open_cart(cart)
     await db.carts.update_one({"_id": cart["_id"]}, {"$set": {"items": [], "updated_at": now_iso()}})
     return await get_cart(db, cart["cart_id"])
 
@@ -216,6 +235,7 @@ async def calculate_cart(db, restaurant_id: str, cart: dict,
 
 async def validate_cart(db, restaurant_id: str, cart: dict) -> dict:
     """Checks availability, activity, option compatibility, quantities and price changes."""
+    _require_open_cart(cart)
     issues = []
     if not cart.get("items"):
         issues.append("Le panier est vide.")
@@ -321,11 +341,15 @@ async def create_order(db, restaurant_id: str, cart: dict, customer_data: dict,
     if order_type not in ORDER_TYPES:
         raise HTTPException(status_code=400, detail="Type de commande invalide")
 
-    # Idempotency: same key => return existing order
+    # Idempotency: same key => return existing order.
+    # Runs BEFORE the open-cart guard (D1.50): a legitimate retry of an
+    # already-processed request must still return the existing order even
+    # though the cart is now "ordered" — not a 409.
     if idempotency_key:
         existing = await db.orders.find_one({"restaurant_id": restaurant_id, "idempotency_key": idempotency_key})
         if existing:
             return serialize(existing)
+    _require_open_cart(cart)
 
     restaurant = await get_restaurant(db, restaurant_id)
 
