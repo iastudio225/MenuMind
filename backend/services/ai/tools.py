@@ -75,7 +75,25 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
         return {"zones": await svc.get_delivery_zones(db, rid, active_only=True)}, None
 
     if tool == "add_to_cart":
-        await svc.add_to_cart(db, rid, cart, args["item_id"], int(args.get("quantity", 1)), args.get("option_ids", []))
+        item_id = args["item_id"]
+        quantity = int(args.get("quantity", 1))
+        option_ids = args.get("option_ids") or []
+        if quantity < 1:
+            raise HTTPException(status_code=400, detail="Quantité invalide")
+        # D1.46: the same article with the same options already on a line must
+        # be CUMULATED on that line, never pushed as a second identical line
+        # (model re-add after a mid-turn failure/retry, "j'en prends encore un"...).
+        existing = next(
+            (i for i in cart.get("items", [])
+             if i.get("item_id") == item_id
+             and sorted(i.get("option_ids") or []) == sorted(option_ids)),
+            None)
+        if existing is not None:
+            await svc.update_cart_item(db, rid, cart, existing["cart_item_id"],
+                                       quantity=int(existing.get("quantity", 1)) + quantity,
+                                       option_ids=None)
+        else:
+            await svc.add_to_cart(db, rid, cart, item_id, quantity, option_ids)
         return await _cart_view(db, rid, conversation), None
 
     if tool == "update_cart_item":
@@ -83,7 +101,14 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
         return await _cart_view(db, rid, conversation), None
 
     if tool == "remove_from_cart":
-        await svc.remove_cart_item(db, cart, args["cart_item_id"])
+        # D1.46: order_service.remove_cart_item is a silent $pull — a wrong or
+        # unknown cart_item_id (model passing item_id instead, stale id...) would
+        # no-op while the tool reports success. Validate first, like
+        # update_cart_item does, so the model gets a controlled 404 it can retry.
+        cart_item_id = args["cart_item_id"]
+        if not any(i.get("cart_item_id") == cart_item_id for i in cart.get("items", [])):
+            raise HTTPException(status_code=404, detail="Ligne de panier introuvable")
+        await svc.remove_cart_item(db, cart, cart_item_id)
         return await _cart_view(db, rid, conversation), None
 
     if tool == "set_fulfillment":

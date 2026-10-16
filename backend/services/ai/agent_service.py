@@ -98,9 +98,9 @@ Tu réponds TOUJOURS avec un unique objet JSON valide, sans texte autour, de la 
 - Quand tu n'as pas besoin d'outil (juste parler/poser une question), mets "tool": null.
 
 OUTILS DISPONIBLES : {TOOL_NAMES}
-- add_to_cart {{"item_id","quantity","option_ids":[...]}} — ajoute un article (utilise les id du menu).
-- update_cart_item {{"cart_item_id","quantity"?,"option_ids"?}} — modifie une ligne du panier.
-- remove_from_cart {{"cart_item_id"}} — retire une ligne.
+- add_to_cart {{"item_id","quantity","option_ids":[...]}} — ajoute un article (utilise les id du menu). Si le même article avec les mêmes options est déjà dans le panier, la quantité est cumulée sur la ligne existante.
+- update_cart_item {{"cart_item_id","quantity"?,"option_ids"?}} — modifie une ligne du panier. Pour enlever N unités, renvoie la quantité RESTANTE (elle doit rester >= 1 ; sinon retire la ligne avec remove_from_cart).
+- remove_from_cart {{"cart_item_id"}} — retire la ligne ENTIERE du panier. Utilise UNIQUEMENT un cart_item_id fourni dans la section PANIER, jamais un item_id du menu.
 - set_fulfillment {{"order_type":"DELIVERY"|"PICKUP","delivery_zone_id"?,"address"?}} — définit livraison/retrait (zone obligatoire pour livraison).
 - set_customer {{"last_name"?,"first_name","phone","email"?}} — enregistre le client.
 - calculate_cart {{}} — récupère le total officiel du serveur (à utiliser avant de présenter le récapitulatif).
