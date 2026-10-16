@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Assistant de commande</title>
 <style>
+  :root { --accent: #E05638; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: transparent; overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   #root { position: relative; height: 100%; }
 
   #launcher { position: absolute; bottom: 0; right: 0; width: 56px; height: 56px;
-    border-radius: 9999px; border: 0; cursor: pointer; background: #E05638; color: #fff;
+    border-radius: 9999px; border: 0; cursor: pointer; background: var(--accent); color: #fff;
     display: grid; place-items: center; box-shadow: 0 8px 24px rgba(15,23,42,.35); }
   #launcher:hover { filter: brightness(1.05); }
   #launcher svg { width: 24px; height: 24px; }
@@ -23,7 +24,7 @@
 
   #header { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
     background: #0F172A; color: #fff; flex: 0 0 auto; }
-  #header .avatar { width: 34px; height: 34px; border-radius: 9999px; background: #E05638;
+  #header .avatar { width: 34px; height: 34px; border-radius: 9999px; background: var(--accent);
     display: grid; place-items: center; flex: 0 0 auto; }
   #header .avatar svg { width: 18px; height: 18px; }
   #header .meta { min-width: 0; flex: 1; }
@@ -36,7 +37,7 @@
     flex-direction: column; gap: 10px; background: #f8fafc; }
   .bubble { max-width: 85%; padding: 8px 12px; border-radius: 16px; font-size: 13px;
     line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
-  .user { align-self: flex-end; background: #E05638; color: #fff; border-bottom-right-radius: 4px; }
+  .user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
   .assistant { align-self: flex-start; background: #e2e8f0; color: #0F172A; border-bottom-left-radius: 4px; }
   .welcome { align-self: stretch; background: #f1f5f9; color: #334155; font-size: 13px;
     padding: 8px 12px; border-radius: 12px; }
@@ -55,7 +56,7 @@
   #loading { display: none; align-items: center; gap: 8px; padding: 0 12px 8px;
     font-size: 12px; color: #64748b; background: #f8fafc; }
   #loading.show { display: flex; }
-  .spinner { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-top-color: #E05638;
+  .spinner { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-top-color: var(--accent);
     border-radius: 9999px; animation: spin .8s linear infinite; flex: 0 0 auto; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -63,15 +64,15 @@
     margin: 0 12px 8px; padding: 8px 10px; border-radius: 10px; font-size: 12px;
     background: #fee2e2; color: #b91c1c; }
   #error.show { display: flex; }
-  #retry { border: 1px solid #fecaca; background: #fff; color: #b91c1c; border-radius: 8px;
+  #retry, #new-conv { border: 1px solid #fecaca; background: #fff; color: #b91c1c; border-radius: 8px;
     font-size: 11px; padding: 4px 8px; cursor: pointer; white-space: nowrap; }
-  #retry:disabled { opacity: .5; cursor: default; }
+  #retry:disabled, #new-conv:disabled { opacity: .5; cursor: default; }
 
   #form { display: flex; gap: 8px; padding: 10px; border-top: 1px solid #e2e8f0; background: #fff; flex: 0 0 auto; }
   #input { flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 12px;
     font-size: 13px; outline: none; }
-  #input:focus { border-color: #E05638; }
-  #send { border: 0; border-radius: 10px; background: #E05638; color: #fff; width: 40px;
+  #input:focus { border-color: var(--accent); }
+  #send { border: 0; border-radius: 10px; background: var(--accent); color: #fff; width: 40px;
     cursor: pointer; display: grid; place-items: center; }
   #send:disabled { opacity: .5; cursor: default; }
   #send svg { width: 16px; height: 16px; }
@@ -102,7 +103,10 @@
     <div id="messages" aria-live="polite" aria-label="Messages de la conversation" data-testid="chat-messages"></div>
     <div id="loading" data-testid="chat-loading"><span class="spinner"></span> L'assistant est en train d'écrire…</div>
     <div id="error" data-testid="chat-error"><span id="error-text"></span>
-      <button id="retry" data-testid="chat-retry">Réessayer</button>
+      <span style="display:flex;gap:6px;">
+        <button id="new-conv" data-testid="chat-new-conversation" hidden>Nouvelle conversation</button>
+        <button id="retry" data-testid="chat-retry">Réessayer</button>
+      </span>
     </div>
 
     <form id="form">
@@ -125,8 +129,13 @@
 
   var CLOSED_W = 64, CLOSED_H = 64, OPEN_W = 380, OPEN_H = 560;
   var open = false, sending = false, conversationId = null;
+  // D1.53: panier partagé — le frame restore/persiste les ids serveur (contrat
+  // D1.50) dans le localStorage de son origine API, isolé par restaurant.
+  var cartId = null;
+  var STORAGE_CONV = "menumind:conv:" + restaurantId;
+  var STORAGE_CART = "menumind:cart:" + restaurantId;
   var messages = [], welcome = "", shopName = "Assistant";
-  var lastFailedText = null;
+  var lastFailedText = null, lastFailedStatus = null;
 
   var el = {
     launcher: document.getElementById("launcher"),
@@ -234,15 +243,58 @@
     el.messages.scrollTop = el.messages.scrollHeight;
   }
 
-  function showError(text, retryText) {
+  function showError(text, retryText, status) {
     lastFailedText = retryText;
+    lastFailedStatus = status || null;
     el.errorText.textContent = text;
+    // 409 = panier non utilisable / conversation incompatible : proposer une
+    // session neuve plutôt que de répéter la même requête condamnée.
+    document.getElementById("new-conv").hidden = lastFailedStatus !== 409;
     el.error.classList.add("show");
   }
   function clearError() {
     el.error.classList.remove("show");
     lastFailedText = null;
+    lastFailedStatus = null;
+    document.getElementById("new-conv").hidden = true;
   }
+
+  function storageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* stockage indisponible */ } }
+  function storageDel(k) { try { localStorage.removeItem(k); } catch (e) { /* stockage indisponible */ } }
+
+  // Purge des identifiants locaux seulement (les carts serveur sont jetables) —
+  // utilisée sur 409 (choix utilisateur) et après une commande confirmée.
+  function purgeSession() {
+    storageDel(STORAGE_CONV);
+    storageDel(STORAGE_CART);
+    conversationId = null;
+    cartId = null;
+  }
+
+  // Restauration au chargement : même règles que le store React (D1.51) —
+  // GET cart, restauration si "open", purge si 4xx ou statut non-open,
+  // conservation des ids en cas d'erreur réseau (retry au prochain tour).
+  function restoreSession() {
+    var conv = storageGet(STORAGE_CONV);
+    if (conv) conversationId = conv;
+    var cart = storageGet(STORAGE_CART);
+    if (!cart) return Promise.resolve();
+    return fetch(API + "/api/public/cart/" + encodeURIComponent(cart))
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (res.status === 200 && data.status === "open") {
+            cartId = data.cart_id || cart;
+            storageSet(STORAGE_CART, cartId);
+          } else if (res.status >= 400 && res.status < 500) {
+            purgeSession();
+          }
+          // 5xx serveur : on conserve les identifiants (transitoire).
+        });
+      })
+      .catch(function () { /* erreur réseau : on conserve les identifiants */ });
+  }
+  var restoreDone = restoreSession();
 
   function setOpen(next) {
     open = next;
@@ -271,26 +323,40 @@
     el.input.disabled = true;
     if (appendUser) messages.push({ role: "user", content: msg });
     render();
-    var body = { restaurant_public_id: restaurantId, message: msg };
-    if (conversationId) body.conversation_id = conversationId;
-    fetch(API + "/api/public/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    // Le premier envoi attend la fin de la restauration pour ne pas envoyer
+    // sans cart_id pendant qu'un panier restauré est encore en cours de vérif.
+    restoreDone.then(function () {
+      var body = { restaurant_public_id: restaurantId, message: msg };
+      if (conversationId) body.conversation_id = conversationId;
+      if (cartId) body.cart_id = cartId;
+      return fetch(API + "/api/public/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         return { status: res.status, data: data };
       });
     }).then(function (r) {
       if (r.status < 200 || r.status >= 300) {
-        showError(apiErrorDetail(r.data.detail), msg);
+        showError(apiErrorDetail(r.data.detail), msg, r.status);
         return;
       }
       conversationId = r.data.conversation_id || conversationId;
+      if (r.data.cart_id) {
+        cartId = r.data.cart_id;
+        storageSet(STORAGE_CART, cartId);
+      }
+      if (conversationId) storageSet(STORAGE_CONV, conversationId);
       messages.push({ role: "assistant", content: r.data.message || "", cart: r.data.cart || null });
+      // Commande créée par l'assistant : session terminée — purge des ids pour
+      // qu'une prochaine conversation reparte propre (panier ordered jamais
+      // réutilisé, conformément au cycle de vie serveur).
+      if (r.data.order) purgeSession();
       render();
     }).catch(function () {
-      showError("Erreur de connexion. Vérifiez votre réseau.", msg);
+      showError("Erreur de connexion. Vérifiez votre réseau.", msg, null);
     }).then(function () {
       sending = false;
       el.loading.classList.remove("show");
@@ -312,6 +378,14 @@
     send(v, true);
   });
   el.retry.addEventListener("click", function () { send(lastFailedText, false); });
+  document.getElementById("new-conv").addEventListener("click", function () {
+    // Choisi par l'utilisateur sur un 409 : session neuve, historique vidé,
+    // le panier serveur restant (éventuellement ordered) n'est plus référencé.
+    purgeSession();
+    messages = [];
+    clearError();
+    render();
+  });
 
   if (!restaurantId) {
     showError("Identifiant restaurant manquant.", null);
@@ -326,8 +400,10 @@
         shopName = r.name || "Assistant";
         welcome = r.welcome_message || "Bonjour 👋 Comment puis-je vous aider ?";
         el.shopName.textContent = shopName;
-        if (r.widget && r.widget.primary_color) {
-          document.getElementById("launcher").style.background = r.widget.primary_color;
+        // D1.53: le menu public expose restaurant.primary_color (plat, D1.50)
+        // — l'ancien r.widget.primary_color n'existait jamais dans ce contrat.
+        if (r.primary_color) {
+          document.documentElement.style.setProperty("--accent", r.primary_color);
         }
         render();
       })
