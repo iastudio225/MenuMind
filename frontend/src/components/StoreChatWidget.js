@@ -10,13 +10,25 @@ const FALLBACK_WELCOME = "Bonjour 👋 Je suis l'assistant de commande. Comment 
 
 const ORDER_TYPE_LABELS = { DELIVERY: "Livraison", PICKUP: "À emporter" };
 
-export default function StoreChatWidget({ restaurantPublicId, welcomeMessage }) {
-  const [open, setOpen] = useState(false);
+export default function StoreChatWidget({
+  restaurantPublicId,
+  welcomeMessage,
+  cartId,
+  conversationId,
+  onConversationChange,
+  onCartChange,
+  ensureCart,
+  onNewConversation,
+  sessionEpoch = 0,
+  // D1.52: embedded=true rend le panneau dans le flux de l'onglet Assistant
+  // (pas de launcher ni de panneau overlay — le parent gère la navigation).
+  embedded = false,
+}) {
+  const [open, setOpen] = useState(!embedded);
   const [messages, setMessages] = useState([]); // {role: "user"|"assistant", content, cart?}
   const [input, setInput] = useState("");
-  const [conversationId, setConversationId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null); // {text, retryText} | null
+  const [error, setError] = useState(null); // {text, retryText, status} | null
   const sendingRef = useRef(false); // anti double-soumission (synchrone)
   const endRef = useRef(null);
   const inputRef = useRef(null);
@@ -30,6 +42,13 @@ export default function StoreChatWidget({ restaurantPublicId, welcomeMessage }) 
     if (endRef.current) endRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, loading, error]);
 
+  // D1.51: le parent bump cet epoch quand la session change (commande confirmée,
+  // « nouvelle conversation » après 409) — l'historique local est alors purgé.
+  useEffect(() => {
+    setMessages([]);
+    setError(null);
+  }, [sessionEpoch]);
+
   const send = async (text, appendUser = true) => {
     const msg = (text || "").trim();
     if (!msg || sendingRef.current) return;
@@ -38,15 +57,29 @@ export default function StoreChatWidget({ restaurantPublicId, welcomeMessage }) 
     setError(null);
     if (appendUser) setMessages((m) => [...m, { role: "user", content: msg }]);
     try {
+      // D1.51: panier partagé — le panier est créé paresseusement (ensureCart)
+      // et son id transmis au backend qui lie la conversation dessus (D1.50).
+      let cid = cartId;
+      if (ensureCart) cid = await ensureCart();
       const body = { restaurant_public_id: restaurantPublicId, message: msg };
       if (conversationId) body.conversation_id = conversationId;
+      if (cid) body.cart_id = cid;
       const { data } = await axios.post(`${API}/public/ai/chat`, body);
-      setConversationId(data.conversation_id || null);
+      if (!data || !data.conversation_id || !data.cart || !data.cart_id) {
+        // Réponse malformée: on n'efface ni panier ni conversation valides.
+        setError({ text: "Réponse inattendue de l'assistant. Réessayez.", retryText: msg, status: null });
+        return;
+      }
+      onConversationChange?.(data.conversation_id);
       setMessages((m) => [...m, { role: "assistant", content: data.message || "", cart: data.cart || null }]);
+      onCartChange?.(data.cart, data.cart_id);
     } catch (e) {
+      // 429 (quota), 503 (provider) et erreurs réseau conservent panier et
+      // conversation: l'utilisateur peut réessayer sans perte d'état.
       setError({
         text: formatApiErrorDetail(e.response?.data?.detail) || "Erreur de connexion. Vérifiez votre réseau.",
         retryText: msg,
+        status: e.response?.status || null,
       });
     } finally {
       setLoading(false);
@@ -67,20 +100,23 @@ export default function StoreChatWidget({ restaurantPublicId, welcomeMessage }) 
 
   return (
     <>
-      {/* Bouton flottant */}
-      <Button
-        onClick={() => setOpen((o) => !o)}
-        aria-label={open ? "Fermer l'assistant de commande" : "Ouvrir l'assistant de commande"}
-        aria-expanded={open}
-        data-testid="chat-launcher"
-        className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full shadow-xl sm:bottom-6 sm:right-6"
-        size="icon"
-      >
-        {open ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
-      </Button>
+      {/* Bouton flottant (mode overlay uniquement — en embedded, le parent
+          rend son propre accès à l'assistant) */}
+      {!embedded && (
+        <Button
+          onClick={() => setOpen((o) => !o)}
+          aria-label={open ? "Fermer l'assistant de commande" : "Ouvrir l'assistant de commande"}
+          aria-expanded={open}
+          data-testid="chat-launcher"
+          className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full shadow-xl sm:bottom-6 sm:right-6"
+          size="icon"
+        >
+          {open ? <X className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+        </Button>
+      )}
 
       {/* Panneau de conversation */}
-      {open && (
+      {(embedded || open) && (
         <div
           ref={panelRef}
           role="dialog"
@@ -88,17 +124,30 @@ export default function StoreChatWidget({ restaurantPublicId, welcomeMessage }) 
           aria-modal="false"
           onKeyDown={onPanelKeyDown}
           data-testid="chat-panel"
-          className="fixed inset-x-3 bottom-44 z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[24rem]"
+          className={embedded
+            ? "relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card"
+            : "fixed inset-x-3 bottom-44 z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[24rem]"}
         >
           {/* En-tête */}
           <div className="flex items-center gap-3 border-b border-border bg-[#0F172A] px-4 py-3 text-white">
             <span className="w-9 h-9 rounded-full bg-primary grid place-items-center">
               <Bot className="w-5 h-5" />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">Assistant de commande</p>
               <p className="text-xs text-white/70">Répond instantanément</p>
             </div>
+            {!embedded && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Fermer l'assistant"
+                onClick={() => setOpen(false)}
+                className="h-8 w-8 text-white hover:bg-white/10 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
           </div>
 
           {/* Messages */}
@@ -187,16 +236,30 @@ export default function StoreChatWidget({ restaurantPublicId, welcomeMessage }) 
                 data-testid="chat-error"
               >
                 <span>{error.text}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 shrink-0"
-                  disabled={loading}
-                  onClick={() => send(error.retryText, false)}
-                  data-testid="chat-retry"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Réessayer
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {error.status === 409 && onNewConversation && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      disabled={loading}
+                      onClick={() => { onNewConversation(); setError(null); }}
+                      data-testid="chat-new-conversation"
+                    >
+                      Nouvelle conversation
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    disabled={loading}
+                    onClick={() => send(error.retryText, false)}
+                    data-testid="chat-retry"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 mr-1" /> Réessayer
+                  </Button>
+                </div>
               </div>
             )}
             <div ref={endRef} />
