@@ -27,6 +27,10 @@ async def ensure_indexes():
     await db.menu_option_groups.create_index("restaurant_id")
     await db.menu_options.create_index("restaurant_id")
     await db.menu_options.create_index([("restaurant_id", 1), ("group_id", 1)])
+    # D1.54: one weekly-menu document per (restaurant, day) — the unique index
+    # is the storage-level guarantee against duplicate days (create_index is
+    # idempotent: no destructive migration involved).
+    await db.weekly_menus.create_index([("restaurant_id", 1), ("day", 1)], unique=True)
     await db.orders.create_index("restaurant_id")
     await db.orders.create_index([("restaurant_id", 1), ("status", 1)])
     await db.orders.create_index([("restaurant_id", 1), ("created_at", -1)])

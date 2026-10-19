@@ -12,6 +12,7 @@ import re
 import secrets
 from datetime import datetime, timezone
 from typing import Optional, List
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from bson import ObjectId
 from pymongo import ReturnDocument
 from fastapi import HTTPException
@@ -93,6 +94,62 @@ async def get_available_menu(db, restaurant_id: str) -> dict:
         out.append({"id": str(c["_id"]), "name": c["name"], "items": item_list})
     return {"restaurant": {"public_id": (await get_restaurant(db, restaurant_id))["public_id"],
                            "name": (await get_restaurant(db, restaurant_id))["name"]}, "categories": out}
+
+
+# ---------------- DAILY MENU (D1.54) ----------------
+# Same keys as restaurants.opening_hours and weekly_menu_router.DAYS
+# (test_day_menu asserts the two contracts stay identical).
+DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday",
+            "friday", "saturday", "sunday"]
+# Documented fallback: missing, empty or invalid restaurants.timezone values
+# never fall back to the machine's local timezone.
+DEFAULT_TIMEZONE = "Africa/Abidjan"
+
+
+def _local_day(tz_name: Optional[str], now: Optional[datetime] = None) -> str:
+    """Day key (monday..sunday) of `now` converted to the restaurant timezone.
+
+    - now=None -> current instant (read as UTC);
+    - a naive datetime is interpreted as UTC (tests inject aware instants to
+      stay deterministic; no ambient machine timezone is ever used);
+    - absent/empty/invalid tz_name -> Africa/Abidjan, silently documented —
+      a bad config must never crash a conversation nor shift days randomly.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    try:
+        tz = ZoneInfo(tz_name or DEFAULT_TIMEZONE)
+    except (ZoneInfoNotFoundError, ValueError, TypeError):
+        tz = ZoneInfo(DEFAULT_TIMEZONE)
+    return DAY_KEYS[now.astimezone(tz).weekday()]
+
+
+async def get_day_menu(db, restaurant_id: str, now: Optional[datetime] = None) -> dict:
+    """Restaurant menu for its OWN local day (D1.54).
+
+    Returns {"day": <day key>, "status": ..., "items": [...]} with status:
+    - "not_configured": no weekly_menus document for the local day -> items=[]
+      (the full catalogue is NEVER substituted);
+    - "inactive": the day exists but active=False -> items=[];
+    - "active": item_ids resolved against get_available_menu, in the planner's
+      order. Deleted or inactive items cannot leak (the catalogue is
+      tenant-scoped and already excludes active=False); available:False items
+      are KEPT with their real flag — same contract as the public catalogue,
+      so the caller can present them as unavailable, never as orderable.
+    """
+    restaurant = await get_restaurant(db, restaurant_id)
+    day = _local_day(restaurant.get("timezone") or DEFAULT_TIMEZONE, now)
+    doc = await db.weekly_menus.find_one({"restaurant_id": restaurant_id, "day": day})
+    if not doc:
+        return {"day": day, "status": "not_configured", "items": []}
+    if not doc.get("active", True):
+        return {"day": day, "status": "inactive", "items": []}
+    catalogue = await get_available_menu(db, restaurant_id)
+    by_id = {it["id"]: it for cat in catalogue["categories"] for it in cat["items"]}
+    items = [by_id[iid] for iid in doc.get("item_ids", []) if iid in by_id]
+    return {"day": day, "status": "active", "items": items}
 
 
 # ---------------- CART ----------------

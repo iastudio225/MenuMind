@@ -13,7 +13,8 @@ from database import db, get_client
 from seed import run_seed
 from routers import (auth_router, restaurant_router, user_router, dashboard_router,
                      admin_router, menu_router, cart_router, order_router,
-                     customer_router, delivery_router, ai_router, embed_router)
+                     customer_router, delivery_router, ai_router, embed_router,
+                     weekly_menu_router)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ app.include_router(user_router.router, prefix="/api")
 app.include_router(dashboard_router.router, prefix="/api")
 app.include_router(admin_router.router, prefix="/api")
 app.include_router(menu_router.router, prefix="/api")
+app.include_router(weekly_menu_router.router, prefix="/api")
 app.include_router(cart_router.router, prefix="/api")
 app.include_router(order_router.router, prefix="/api")
 app.include_router(order_router.public_router, prefix="/api")

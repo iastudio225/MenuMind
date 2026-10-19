@@ -21,9 +21,15 @@ AFFIRM = re.compile(
     r"allez[-\s]?y|commande[rz]?|go|ok|okay)\b", re.IGNORECASE)
 
 TOOL_NAMES = [
-    "get_available_menu", "get_delivery_zones", "add_to_cart", "update_cart_item",
+    "get_available_menu", "get_delivery_zones", "get_day_menu", "recommend_items",
+    "show_catalog", "add_to_cart", "update_cart_item",
     "remove_from_cart", "set_fulfillment", "set_customer", "calculate_cart", "create_order",
 ]
+
+# D1.54: product cards delivered to the client are always bounded and
+# rehydrated from the server catalogue — never chosen as free text by the model.
+MAX_RECOMMEND = 6
+CATALOG_PAGE_SIZE = 12
 
 
 def _cart_fingerprint(cart: dict, draft: dict) -> str:
@@ -73,6 +79,71 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
 
     if tool == "get_delivery_zones":
         return {"zones": await svc.get_delivery_zones(db, rid, active_only=True)}, None
+
+    if tool == "get_day_menu":
+        # D1.54: the ONLY entry point to the weekly plan — the day/timezone
+        # logic lives in order_service.get_day_menu, never in the agent.
+        day = await svc.get_day_menu(db, rid)
+        if day.get("status") == "active":
+            return {"status": "active", "day": day.get("day"),
+                    "products": day.get("items") or [],
+                    "hint": "Menu du jour actif : présente ces cartes au client telles quelles "
+                            "(noms, prix, disponibilité)."}, None
+        reason = ("Aucun menu du jour n'est configuré pour aujourd'hui."
+                  if day.get("status") == "not_configured"
+                  else "Le menu du jour d'aujourd'hui est désactivé.")
+        # Never substitute the full catalogue: an absent/inactive plan asks for
+        # the customer's taste first (D1.54 rule).
+        return {"status": day.get("status"), "day": day.get("day"), "products": [],
+                "hint": reason + " Demande d'abord au client ce qu'il aimerait manger "
+                        "(envie, goût), puis utilise recommend_items. "
+                        "Ne présente JAMAIS tout le catalogue automatiquement."}, None
+
+    if tool == "recommend_items":
+        # D1.54: the model's item ids are untrusted — every id must already
+        # exist in THIS restaurant's catalogue before any card is rebuilt.
+        item_ids = [str(i) for i in (args.get("item_ids") or [])]
+        if not item_ids:
+            raise HTTPException(status_code=400, detail="Aucun produit proposé")
+        if len(set(item_ids)) != len(item_ids):
+            raise HTTPException(status_code=400, detail="Doublon de produit proposé")
+        if len(item_ids) > MAX_RECOMMEND:
+            raise HTTPException(status_code=400, detail=f"Trop de produits proposés ({MAX_RECOMMEND} max)")
+        catalogue = await svc.get_available_menu(db, rid)
+        by_id = {it["id"]: it for c in catalogue.get("categories", []) for it in c.get("items", [])}
+        for iid in item_ids:
+            if iid not in by_id:
+                # Unknown AND foreign ids share the exact _resolve_item message:
+                # a wrong id is never an existence oracle across tenants.
+                raise HTTPException(status_code=400, detail="Article introuvable pour ce restaurant")
+        products = [by_id[i] for i in item_ids if by_id[i].get("available", True)]
+        unavailable = [by_id[i]["name"] for i in item_ids if not by_id[i].get("available", True)]
+        hint = "Présente les cartes renvoyées telles quelles."
+        if unavailable:
+            hint = ("Présente les cartes renvoyées et explique que "
+                    + ", ".join(unavailable)
+                    + (" est" if len(unavailable) == 1 else " sont")
+                    + " temporairement indisponible(s) : ne les présente pas comme commandable(s).")
+        return {"products": products, "unavailable": unavailable, "hint": hint}, None
+
+    if tool == "show_catalog":
+        # Explicit full-catalogue request only (prompt-gated), organised in the
+        # catalogue's group order and bounded by pages.
+        page = int(args.get("page", 0))
+        if page < 0:
+            raise HTTPException(status_code=400, detail="Page invalide")
+        catalogue = await svc.get_available_menu(db, rid)
+        flat = [it for c in catalogue.get("categories", []) for it in c.get("items", [])]
+        total = len(flat)
+        total_pages = max(1, -(-total // CATALOG_PAGE_SIZE))  # ceil
+        if total and page >= total_pages:
+            raise HTTPException(status_code=400, detail="Page hors limites")
+        start = page * CATALOG_PAGE_SIZE
+        return {"products": flat[start:start + CATALOG_PAGE_SIZE], "page": page,
+                "total": total, "total_pages": total_pages,
+                "hint": f"Page {page + 1}/{total_pages} sur {total} produit(s). "
+                        f"Si le client demande la suite, rappelle avec page={page + 1} "
+                        f"(dernière page : {total_pages - 1})."}, None
 
     if tool == "add_to_cart":
         item_id = args["item_id"]

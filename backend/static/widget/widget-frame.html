@@ -77,6 +77,81 @@
   #send:disabled { opacity: .5; cursor: default; }
   #send svg { width: 16px; height: 16px; }
 
+  /* D1.54: cartes produits de la conversation */
+  .products { align-self: stretch; display: flex; flex-direction: column; gap: 8px; }
+  .product { display: flex; align-items: stretch; background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 12px; overflow: hidden; }
+  .product .p-img { width: 64px; min-height: 64px; flex: 0 0 auto; object-fit: cover; align-self: stretch; }
+  .product .p-body { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    min-width: 0; flex: 1 1 auto; }
+  .product .p-info { min-width: 0; flex: 1 1 auto; }
+  .p-name { font-size: 13px; font-weight: 600; color: #0F172A;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-desc { font-size: 11px; color: #64748b; margin-top: 2px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .p-price { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    font-weight: 700; color: #0F172A; margin-top: 3px; }
+  .p-add { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e2e8f0;
+    background: #fff; color: var(--accent); cursor: pointer; font-size: 18px; line-height: 1;
+    display: grid; place-items: center; }
+  .p-add:hover { border-color: var(--accent); }
+  .p-none { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: #dc2626; }
+
+  /* D1.54: mini-sélecteur visuel des options */
+  #opt-overlay { position: absolute; inset: 0; z-index: 20; display: none;
+    align-items: flex-end; justify-content: center; padding: 12px;
+    background: rgba(15, 23, 42, .45); }
+  #opt-overlay.show { display: flex; }
+  #opt-sheet { width: 100%; max-width: 340px; max-height: 92%; overflow-y: auto;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(15,23,42,.3); padding: 14px; }
+  .opt-title { font-size: 14px; font-weight: 700; color: #0F172A; }
+  .opt-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .opt-group { margin-top: 12px; }
+  .opt-ghead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; }
+  .opt-gname { font-size: 12px; font-weight: 600; color: #0F172A; }
+  .opt-req { font-size: 11px; font-weight: 600; color: var(--accent); }
+  .opt-lim { font-size: 11px; color: #94a3b8; }
+  .opt-choices { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .opt-choice { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 10px; border: 1px solid #e2e8f0; border-radius: 8px;
+    font-size: 12px; color: #0F172A; cursor: pointer; }
+  .opt-choice.on { border-color: var(--accent); background: rgba(224, 86, 56, .06); }
+  .opt-choice.off { opacity: .4; cursor: default; pointer-events: none; }
+  .opt-choice input { accent-color: var(--accent); flex: 0 0 auto; }
+  .opt-choice .opt-name { flex: 1 1 auto; min-width: 0; }
+  .opt-choice .opt-delta { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; color: #64748b; }
+  .opt-empty { font-size: 11px; color: #b91c1c; margin-top: 4px; }
+  .opt-gmsg { font-size: 11px; color: #b91c1c; margin-top: 4px; display: none; }
+  .opt-gmsg.show { display: block; }
+  .opt-qty { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; }
+  .opt-qty button { width: 32px; height: 32px; border: 1px solid #e2e8f0; background: #fff;
+    border-radius: 8px; cursor: pointer; font-size: 16px; line-height: 1; color: #0F172A; }
+  .opt-qty span { font-size: 15px; font-weight: 700; min-width: 28px; text-align: center;
+    color: #0F172A; }
+  #opt-err { margin-top: 10px; font-size: 11px; color: #b91c1c; background: #fee2e2;
+    border-radius: 8px; padding: 7px 9px; display: none; }
+  #opt-err.show { display: block; }
+  .opt-foot { display: flex; gap: 8px; margin-top: 14px; }
+  .opt-cancel { flex: 0 0 auto; border: 1px solid #e2e8f0; background: #fff; color: #0F172A;
+    border-radius: 10px; padding: 9px 12px; font-size: 12px; cursor: pointer; }
+  .opt-confirm { flex: 1 1 auto; border: 0; border-radius: 10px; background: var(--accent);
+    color: #fff; padding: 9px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .opt-confirm:disabled { opacity: .5; cursor: default; }
+
+  /* D1.54: confirmation d'ajout */
+  #toast { position: absolute; left: 12px; right: 12px; bottom: 66px; z-index: 30;
+    display: none; padding: 9px 12px; border-radius: 10px; font-size: 12px; text-align: center;
+    background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;
+    box-shadow: 0 8px 24px rgba(15,23,42,.18); }
+  #toast.show { display: block; }
+  #toast.err { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+
+  .p-add:focus-visible, .opt-cancel:focus-visible, .opt-confirm:focus-visible,
+  .opt-qty button:focus-visible, .opt-choice:focus-within {
+    outline: 2px solid var(--accent); outline-offset: 1px; }
+
   @media (max-width: 480px) {
     #panel { border-radius: 12px; }
   }
@@ -116,6 +191,27 @@
       </button>
     </form>
   </div>
+
+  <!-- D1.54: mini-sélecteur visuel des options (aucune dépendance externe) -->
+  <div id="opt-overlay">
+    <div id="opt-sheet" role="dialog" aria-modal="true" aria-labelledby="opt-title" data-testid="item-option-modal">
+      <p id="opt-title" class="opt-title"></p>
+      <p id="opt-desc" class="opt-desc"></p>
+      <div id="opt-groups"></div>
+      <div class="opt-qty">
+        <button type="button" id="opt-minus" aria-label="Diminuer la quantité" data-testid="opt-minus">&minus;</button>
+        <span id="opt-qty-value" data-testid="item-qty" aria-live="polite">1</span>
+        <button type="button" id="opt-plus" aria-label="Augmenter la quantité" data-testid="opt-plus">+</button>
+      </div>
+      <p id="opt-err" role="alert" data-testid="chat-add-error"></p>
+      <div class="opt-foot">
+        <button type="button" id="opt-cancel" class="opt-cancel" data-testid="opt-cancel">Annuler</button>
+        <button type="button" id="opt-confirm" class="opt-confirm" data-testid="confirm-add-item">Ajouter</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite" data-testid="chat-add-toast"></div>
 </div>
 
 <script>
@@ -136,6 +232,10 @@
   var STORAGE_CART = "menumind:cart:" + restaurantId;
   var messages = [], welcome = "", shopName = "Assistant";
   var lastFailedText = null, lastFailedStatus = null;
+  // D1.54: mini-sélecteur d'options ouvert (null = fermé), verrou synchrone
+  // d'ajout (anti double-clic — même rôle que `sending` côté chat), dernier
+  // bouton "+" cliqué (retour du focus après fermeture) et minuteur du toast.
+  var selector = null, adding = false, lastAddBtn = null, toastTimer = null;
 
   var el = {
     launcher: document.getElementById("launcher"),
@@ -150,6 +250,18 @@
     input: document.getElementById("input"),
     send: document.getElementById("send"),
     shopName: document.getElementById("shop-name"),
+    optOverlay: document.getElementById("opt-overlay"),
+    optSheet: document.getElementById("opt-sheet"),
+    optTitle: document.getElementById("opt-title"),
+    optDesc: document.getElementById("opt-desc"),
+    optGroups: document.getElementById("opt-groups"),
+    optQty: document.getElementById("opt-qty-value"),
+    optErr: document.getElementById("opt-err"),
+    optConfirm: document.getElementById("opt-confirm"),
+    optMinus: document.getElementById("opt-minus"),
+    optPlus: document.getElementById("opt-plus"),
+    optCancel: document.getElementById("opt-cancel"),
+    toast: document.getElementById("toast"),
   };
 
   function fmt(n) {
@@ -191,6 +303,16 @@
       a.className = "bubble assistant";
       a.textContent = m.content;
       wrap.appendChild(a);
+      // D1.54: cartes produits livrées par le backend (menu du jour,
+      // recommandation, catalogue paginé) — rendues telles quelles,
+      // jamais fabriquées côté client; absent/vide = aucun bloc.
+      if (m.products && m.products.length > 0) {
+        var pw = document.createElement("div");
+        pw.className = "products";
+        pw.setAttribute("data-testid", "chat-products");
+        m.products.forEach(function (p) { pw.appendChild(buildProductCard(p)); });
+        wrap.appendChild(pw);
+      }
       var cart = m.cart;
       if (cart && cart.items && cart.items.length > 0) {
         var card = document.createElement("div");
@@ -313,6 +435,366 @@
     return String(detail);
   }
 
+  /* ---------- D1.54: cartes produits + mini-sélecteur d'options ---------- */
+
+  function showToast(text, isError) {
+    el.toast.textContent = text;
+    el.toast.classList.toggle("err", !!isError);
+    el.toast.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.classList.remove("show"); }, 3200);
+  }
+
+  function showOptErr(text) {
+    el.optErr.textContent = text;
+    el.optErr.classList.add("show");
+  }
+  function clearOptErr() {
+    el.optErr.textContent = "";
+    el.optErr.classList.remove("show");
+  }
+
+  // Après un ajout réussi: la vue retournée ne porte ni order_type ni les
+  // frais du draft (calculate_cart delivery_fee=0) — merge sélectif pour ne
+  // pas régresser l'aperçu Panier affiché. La carte Panier du DERNIER message
+  // assistant est mise à jour (même réconciliation que le store React).
+  function applyCartUpdate(data) {
+    for (var i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role !== "assistant") continue;
+      var prev = messages[i].cart || {};
+      var merged = Object.assign({}, prev, data);
+      if (Number(prev.delivery_fee) > 0 && Number(data.delivery_fee || 0) === 0) {
+        merged.delivery_fee = prev.delivery_fee;
+        merged.total = Number(data.total || 0) + Number(prev.delivery_fee);
+      }
+      messages[i].cart = merged;
+      return;
+    }
+  }
+
+  // Route existante cart_router POST /public/cart — en pratique cartId existe
+  // déjà (les cartes arrivent dans une réponse portant cart_id); filet de
+  // sécurité pour une restauration de session ayant échoué.
+  function ensureCart() {
+    if (cartId) return Promise.resolve(cartId);
+    return fetch(API + "/api/public/cart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ restaurant_public_id: restaurantId }),
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (res.status >= 200 && res.status < 300 && data.cart_id) {
+          cartId = data.cart_id;
+          storageSet(STORAGE_CART, cartId);
+          return cartId;
+        }
+        throw new Error(apiErrorDetail(data && data.detail));
+      });
+    });
+  }
+
+  // POST /public/cart/{cart_id}/items — seuls les IDS d'options partent vers
+  // le serveur (jamais le prix affiché, qui n'est qu'un récapitulatif).
+  function startAdd(product, optionIds, qty) {
+    if (adding) return;
+    adding = true;
+    clearOptErr();
+    if (selector) updateSelectorState(); // confirm -> "Ajout…" désactivé
+    ensureCart().then(function (cid) {
+      return fetch(API + "/api/public/cart/" + encodeURIComponent(cid) + "/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item_id: product.id, quantity: qty, option_ids: optionIds || [] }),
+      });
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        return { status: res.status, data: data };
+      });
+    }).then(function (r) {
+      if (r.status >= 200 && r.status < 300) {
+        if (r.data && r.data.cart_id) {
+          cartId = r.data.cart_id;
+          storageSet(STORAGE_CART, cartId);
+        }
+        if (r.data) applyCartUpdate(r.data);
+        closeSelector(false);
+        render();
+        el.input.focus();
+        showToast("« " + (product.name || "Article") + " » ajouté au panier", false);
+        return;
+      }
+      var detail = apiErrorDetail(r.data && r.data.detail);
+      if (r.status === 404 || r.status === 409) {
+        // Panier introuvable ou déjà commandé: invalidation de session
+        // existante (même cycle de vie que le chat sur 409), pas de faux succès.
+        purgeSession();
+        closeSelector(false);
+        render();
+        showToast(detail + " Envoyez un message pour démarrer un nouveau panier.", true);
+        return;
+      }
+      // 400 (article/options invalides) ou autre: le sélecteur reste ouvert
+      // avec la sélection conservée pour une nouvelle tentative sûre. Sans
+      // sélecteur (ajout direct), le détail part dans le toast: jamais muet.
+      if (selector) showOptErr(detail);
+      else showToast(detail, true);
+    }).catch(function () {
+      if (selector) showOptErr("Erreur de connexion. Vérifiez votre réseau.");
+      else showToast("Erreur de connexion. Vérifiez votre réseau.", true);
+    }).then(function () {
+      adding = false;
+      if (selector) updateSelectorState();
+    });
+  }
+
+  // Une carte produit = données serveur uniquement: tout le texte passe par
+  // textContent, l'image par setAttribute — aucun HTML interprété.
+  function buildProductCard(p) {
+    var card = document.createElement("div");
+    card.className = "product";
+    card.setAttribute("data-testid", "chat-product");
+    if (p.image_url) {
+      var img = document.createElement("img");
+      img.className = "p-img";
+      img.setAttribute("src", p.image_url);
+      img.alt = "";
+      img.setAttribute("loading", "lazy");
+      card.appendChild(img);
+    }
+    var body = document.createElement("div");
+    body.className = "p-body";
+    var info = document.createElement("div");
+    info.className = "p-info";
+    var name = document.createElement("p");
+    name.className = "p-name";
+    name.textContent = p.name || "";
+    info.appendChild(name);
+    if (p.description) {
+      var desc = document.createElement("p");
+      desc.className = "p-desc";
+      desc.textContent = p.description;
+      info.appendChild(desc);
+    }
+    var price = document.createElement("p");
+    price.className = "p-price";
+    price.textContent = fmt(p.price);
+    info.appendChild(price);
+    body.appendChild(info);
+    if (p.available) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "p-add";
+      btn.textContent = "+";
+      btn.setAttribute("aria-label", "Ajouter " + (p.name || ""));
+      btn.setAttribute("data-testid", "chat-product-add-" + p.id);
+      btn.addEventListener("click", function () { onAddClick(p); });
+      lastAddBtn = btn;
+      body.appendChild(btn);
+    } else {
+      var none = document.createElement("span");
+      none.className = "p-none";
+      none.textContent = "Indisponible";
+      none.setAttribute("data-testid", "chat-product-unavailable-" + p.id);
+      body.appendChild(none);
+    }
+    card.appendChild(body);
+    return card;
+  }
+
+  // Ajout direct sans options (contrat API: option_ids[]) sinon sélecteur.
+  function onAddClick(p) {
+    if (adding) return;
+    if (!p.options || !p.options.length) {
+      startAdd(p, [], 1);
+      return;
+    }
+    openSelector(p);
+  }
+
+  function openSelector(p) {
+    selector = { product: p, sel: {}, qty: 1 };
+    (p.options || []).forEach(function (g) { selector.sel[g.id] = []; });
+    renderSelector();
+    clearOptErr();
+    el.optOverlay.classList.add("show");
+    var first = el.optSheet.querySelector("input:not([disabled]), button:not([disabled])");
+    if (first) first.focus();
+  }
+
+  function closeSelector(restoreFocus) {
+    el.optOverlay.classList.remove("show");
+    selector = null;
+    clearOptErr();
+    if (restoreFocus && lastAddBtn && document.contains(lastAddBtn)) lastAddBtn.focus();
+  }
+
+  // Raison de blocage du groupe, ou "" — un groupe VIDE n'est bloquant que
+  // s'il est exigé (required/min>0): c'est là que la validation est possible-
+  // ment impossible, et le message l'explique.
+  function groupIssue(g) {
+    var count = (selector.sel[g.id] || []).length;
+    var min = Number(g.min || 0);
+    if (!g.choices || !g.choices.length) {
+      return (g.required || min > 0)
+        ? "Aucune option disponible : ce groupe est obligatoire, la validation est impossible."
+        : "";
+    }
+    if (g.required && count < Math.max(1, min)) return "Sélection obligatoire manquante.";
+    if (count < min) return "Sélectionnez au moins " + min + " option(s).";
+    return "";
+  }
+
+  // Contrat de validité identique à ItemOptionModal React, + garde max.
+  function validSelector() {
+    var p = selector.product;
+    return (p.options || []).every(function (g) {
+      var count = (selector.sel[g.id] || []).length;
+      var min = Number(g.min || 0);
+      if (g.required && count < Math.max(1, min)) return false;
+      if (count < min) return false;
+      if (g.max && count > Number(g.max)) return false;
+      return true;
+    });
+  }
+
+  // Récapitulatif d'affichage uniquement (prix catalogue + deltas serveur):
+  // le panier reçoit toujours les seuls ids d'options, le serveur recalcule.
+  function recapPrice() {
+    var p = selector.product;
+    var extra = 0;
+    (p.options || []).forEach(function (g) {
+      (selector.sel[g.id] || []).forEach(function (cid) {
+        var c = (g.choices || []).filter(function (x) { return x.id === cid; })[0];
+        if (c) extra += Number(c.price_delta || 0);
+      });
+    });
+    return (Number(p.price || 0) + extra) * selector.qty;
+  }
+
+  function flatOptionIds() {
+    var out = [];
+    (selector.product.options || []).forEach(function (g) {
+      out = out.concat(selector.sel[g.id] || []);
+    });
+    return out;
+  }
+
+  function syncGroup(g) {
+    var sel = selector.sel[g.id] || [];
+    Array.prototype.forEach.call(el.optGroups.querySelectorAll(".opt-choice"), function (lab) {
+      if (lab.getAttribute("data-gid") !== g.id) return;
+      lab.classList.toggle("on", sel.indexOf(lab.getAttribute("data-cid")) >= 0);
+    });
+  }
+
+  function toggleChoice(g, cid) {
+    if (!selector) return;
+    var arr = selector.sel[g.id] || [];
+    if (g.max === 1) {
+      selector.sel[g.id] = [cid];
+    } else if (arr.indexOf(cid) >= 0) {
+      selector.sel[g.id] = arr.filter(function (x) { return x !== cid; });
+    } else if (arr.length < Number(g.max || 1)) {
+      selector.sel[g.id] = arr.concat([cid]);
+    } else {
+      return; // max atteint: sélection ignorée (comme le store React)
+    }
+    syncGroup(g);
+    updateSelectorState();
+  }
+
+  function updateSelectorState() {
+    if (!selector) return;
+    el.optQty.textContent = String(selector.qty);
+    var groups = selector.product.options || [];
+    groups.forEach(function (g, i) {
+      var msg = el.optGroups.querySelector('[data-gmsg-index="' + i + '"]');
+      if (!msg) return;
+      var issue = groupIssue(g);
+      msg.textContent = issue;
+      msg.classList.toggle("show", !!issue);
+    });
+    var ok = validSelector();
+    el.optConfirm.disabled = !ok || adding;
+    el.optConfirm.textContent = adding ? "Ajout…" : ("Ajouter — " + fmt(recapPrice()));
+  }
+
+  function renderSelector() {
+    var p = selector.product;
+    el.optTitle.textContent = p.name || "";
+    el.optDesc.textContent = p.description || "";
+    el.optDesc.style.display = p.description ? "" : "none";
+    while (el.optGroups.firstChild) el.optGroups.removeChild(el.optGroups.firstChild);
+    (p.options || []).forEach(function (g, idx) {
+      var gd = document.createElement("div");
+      gd.className = "opt-group";
+      gd.setAttribute("data-testid", "store-group-" + g.id);
+      var head = document.createElement("p");
+      head.className = "opt-ghead";
+      var nm = document.createElement("span");
+      nm.className = "opt-gname";
+      nm.textContent = g.name || "";
+      head.appendChild(nm);
+      if (g.required) {
+        var req = document.createElement("span");
+        req.className = "opt-req";
+        req.textContent = "(obligatoire)";
+        head.appendChild(req);
+      }
+      var lim = document.createElement("span");
+      lim.className = "opt-lim";
+      lim.textContent = g.max === 1 ? "— 1 choix"
+        : (Number(g.min || 0) > 0 ? "— min " + g.min + ", max " + g.max : "— max " + g.max);
+      head.appendChild(lim);
+      gd.appendChild(head);
+      var choices = g.choices || [];
+      if (!choices.length) {
+        var empty = document.createElement("p");
+        empty.className = "opt-empty";
+        empty.textContent = "Aucune option disponible dans ce groupe.";
+        gd.appendChild(empty);
+      } else {
+        var box = document.createElement("div");
+        box.className = "opt-choices";
+        var multi = g.max !== 1;
+        choices.forEach(function (c) {
+          var lab = document.createElement("label");
+          lab.className = "opt-choice" + (c.available ? "" : " off");
+          lab.setAttribute("data-gid", g.id);
+          lab.setAttribute("data-cid", c.id);
+          var input = document.createElement("input");
+          input.type = multi ? "checkbox" : "radio";
+          input.name = "optgroup-" + idx;
+          // Option indisponible: sélection interdite (clavier compris).
+          input.disabled = !c.available;
+          var sel = selector.sel[g.id] || [];
+          input.checked = sel.indexOf(c.id) >= 0;
+          if (c.available) {
+            input.addEventListener("change", function () { toggleChoice(g, c.id); });
+          }
+          var txt = document.createElement("span");
+          txt.className = "opt-name";
+          txt.textContent = c.name || "";
+          var delta = document.createElement("span");
+          delta.className = "opt-delta";
+          delta.textContent = Number(c.price_delta || 0) > 0 ? "+" + fmt(c.price_delta) : "";
+          lab.appendChild(input);
+          lab.appendChild(txt);
+          lab.appendChild(delta);
+          if (sel.indexOf(c.id) >= 0) lab.classList.add("on");
+          box.appendChild(lab);
+        });
+        gd.appendChild(box);
+      }
+      var gmsg = document.createElement("p");
+      gmsg.className = "opt-gmsg";
+      gmsg.setAttribute("data-gmsg-index", String(idx));
+      gd.appendChild(gmsg);
+      el.optGroups.appendChild(gd);
+    });
+    updateSelectorState();
+  }
+
   function send(text, appendUser) {
     var msg = (text || "").trim();
     if (!msg || sending) return;
@@ -349,7 +831,10 @@
         storageSet(STORAGE_CART, cartId);
       }
       if (conversationId) storageSet(STORAGE_CONV, conversationId);
-      messages.push({ role: "assistant", content: r.data.message || "", cart: r.data.cart || null });
+      messages.push({ role: "assistant", content: r.data.message || "", cart: r.data.cart || null,
+        // D1.54: cartes du dernier outil-carte réussi (rétrocompatible: champ
+        // absent d'un ancien backend -> tableau vide, aucun bloc carte).
+        products: Array.isArray(r.data.products) ? r.data.products : [] });
       // Commande créée par l'assistant : session terminée — purge des ids pour
       // qu'une prochaine conversation reparte propre (panier ordered jamais
       // réutilisé, conformément au cycle de vie serveur).
@@ -385,6 +870,41 @@
     messages = [];
     clearError();
     render();
+  });
+
+  /* ---------- D1.54: interactions du mini-sélecteur ---------- */
+  el.optMinus.addEventListener("click", function () {
+    if (!selector) return;
+    selector.qty = Math.max(1, selector.qty - 1);
+    updateSelectorState();
+  });
+  el.optPlus.addEventListener("click", function () {
+    if (!selector) return;
+    selector.qty = selector.qty + 1;
+    updateSelectorState();
+  });
+  el.optCancel.addEventListener("click", function () { closeSelector(true); });
+  el.optConfirm.addEventListener("click", function () {
+    if (!selector || adding) return;
+    startAdd(selector.product, flatOptionIds(), selector.qty);
+  });
+  el.optOverlay.addEventListener("click", function (e) {
+    if (e.target === el.optOverlay) closeSelector(true);
+  });
+  // Échap: ferme le sélecteur en priorité, sinon le panneau (comme avant).
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (el.optOverlay.classList.contains("show")) { closeSelector(true); return; }
+    if (open) setOpen(false);
+  });
+  // Focus piégé tant que le sélecteur est ouvert (accessibilité clavier).
+  el.optSheet.addEventListener("keydown", function (e) {
+    if (e.key !== "Tab" || !selector) return;
+    var f = el.optSheet.querySelectorAll("button:not([disabled]), input:not([disabled])");
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
 
   if (!restaurantId) {

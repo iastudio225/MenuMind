@@ -19,6 +19,9 @@ from services.ai.tools import execute_tool, TOOL_NAMES
 logger = logging.getLogger(__name__)
 MAX_STEPS = 6
 MAX_MESSAGE_LEN = 1000
+# D1.54: only these tools deliver product cards; their "products" payload is
+# relayed as-is in the API response (backend-rehydrated, never model-written).
+PRODUCT_TOOLS = {"get_day_menu", "recommend_items", "show_catalog"}
 
 # D1.25: redact contact details in the PERSISTED history only. The current
 # turn keeps the raw text (set_customer needs it); next turns reload the
@@ -180,12 +183,16 @@ OUTILS DISPONIBLES : {TOOL_NAMES}
 - calculate_cart {{}} — récupère le total officiel du serveur (à utiliser avant de présenter le récapitulatif).
 - create_order {{}} — crée la commande. À n'appeler QUE après récapitulatif + confirmation explicite du client.
 - get_available_menu {{}} / get_delivery_zones {{}} — pour relire le menu/les zones si besoin.
+- get_day_menu {{}} — UNIQUEMENT quand le client demande le menu du jour ou le plat du jour : renvoie les cartes du jour (produits validés par le serveur).
+- recommend_items {{"item_ids":[...]}} — UNIQUEMENT quand le client exprime une préférence (envie, goût, type de plat...) : choisis au plus 6 ids dans MENU DISPONIBLE ci-dessus puis présente les cartes renvoyées. Jamais d'identifiant hors catalogue.
+- show_catalog {{"page"?}} — UNIQUEMENT si le client demande explicitement toute la carte / le catalogue complet ; page > 0 uniquement si le client demande la suite.
 
 UTILISATION DES OUTILS (IMPORTANT) :
 - Les sections MENU DISPONIBLE, ZONES DE LIVRAISON et PANIER ci-dessus sont construites à partir des données du serveur pour ce tour : elles sont la référence et suffisent pour répondre aux questions générales sur les plats, les prix, les disponibilités, les zones et les frais.
 - Ne pas appeler get_available_menu ni get_delivery_zones uniquement pour relire ces informations déjà présentes dans ce contexte.
 - Utiliser un outil UNIQUEMENT quand une opération réelle l'exige : modifier le panier, enregistrer le client ou la livraison, calculer le total officiel du serveur, créer la commande, ou re-vérifier une donnée dont tu as réellement besoin à l'instant.
 - N'invente JAMAIS un résultat d'outil, un plat, un prix ou une disponibilité : chaque outil renvoie une donnée validée par le serveur.
+- get_day_menu, recommend_items et show_catalog renvoient des cartes produits du serveur (champ "products") : présente ces produits tels quels (noms, prix, disponibilité). Si "products" est vide, ne présente JAMAIS tout le catalogue automatiquement : demande d'abord au client ce qu'il aime manger.
 
 MENU DISPONIBLE (JSON) :
 {menu_json}
@@ -260,6 +267,9 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     final_message = ""
     order_summary = None
     turn_notes = []
+    # D1.54: product cards of the LAST card-bearing tool in this call; stays []
+    # for a plain conversational turn (retro-compatible: new field only).
+    products = []
 
     for step in range(MAX_STEPS):
         cart = await svc.get_cart(db, conv["cart_id"], rid)
@@ -287,6 +297,10 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
             if maybe_order:
                 order_summary = maybe_order
                 _log("ORDER_CREATED", conversation=conv["conversation_id"], reference=maybe_order.get("reference"))
+            if tool in PRODUCT_TOOLS and isinstance(result, dict):
+                # Server-built cards (validated ids/prices/availability) are
+                # relayed verbatim; a failed follow-up tool never clears them.
+                products = result.get("products") or []
             turn_notes.append({"role": "tool", "name": tool, "content": json.dumps(result, ensure_ascii=False)})
         except HTTPException as e:
             tool_succeeded = False
@@ -315,4 +329,5 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     final_cart["order_type"] = draft.get("order_type")
 
     return {"conversation_id": conv["conversation_id"], "message": final_message,
-            "cart": final_cart, "cart_id": conv["cart_id"], "order": order_summary}
+            "cart": final_cart, "cart_id": conv["cart_id"], "order": order_summary,
+            "products": products}

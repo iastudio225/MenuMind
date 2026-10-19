@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingBag, UtensilsCrossed, Users, Truck,
-  MessageSquare, Settings, LogOut, Menu as MenuIcon, X, UserCog,
+  MessageSquare, Settings, LogOut, Menu as MenuIcon, X, UserCog, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
@@ -14,6 +14,7 @@ const NAV = [
   { to: "/dashboard", end: true, label: "Vue d'ensemble", icon: LayoutDashboard, testid: "nav-overview" },
   { to: "/dashboard/orders", label: "Commandes", icon: ShoppingBag, testid: "nav-orders" },
   { to: "/dashboard/menu", label: "Menu & Carte", icon: UtensilsCrossed, testid: "nav-menu" },
+  { to: "/dashboard/weekly-menu", label: "Menu hebdomadaire", icon: CalendarDays, testid: "nav-weekly-menu" },
   { to: "/dashboard/customers", label: "Clients", icon: Users, testid: "nav-customers" },
   { to: "/dashboard/delivery", label: "Livraison & Zones", icon: Truck, testid: "nav-delivery" },
   { to: "/dashboard/ai", label: "Réceptionniste IA", icon: MessageSquare, testid: "nav-ai" },

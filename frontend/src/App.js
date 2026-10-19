@@ -18,6 +18,7 @@ import UsersPage from "@/pages/dashboard/UsersPage";
 import SettingsPage from "@/pages/dashboard/SettingsPage";
 import AiTestConsole from "@/pages/dashboard/AiTestConsole";
 import MenuPage from "@/pages/dashboard/MenuPage";
+import WeeklyMenuPage from "@/pages/dashboard/WeeklyMenuPage";
 import OrdersPage from "@/pages/dashboard/OrdersPage";
 import CustomersPage from "@/pages/dashboard/CustomersPage";
 import DeliveryPage from "@/pages/dashboard/DeliveryPage";
@@ -66,6 +67,7 @@ function App() {
               <Route index element={<Overview />} />
               <Route path="orders" element={<OrdersPage />} />
               <Route path="menu" element={<MenuPage />} />
+              <Route path="weekly-menu" element={<WeeklyMenuPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="delivery" element={<DeliveryPage />} />
               <Route path="ai" element={<AiTestConsole />} />

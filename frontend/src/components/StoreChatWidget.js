@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { Bot, Loader2, MessageSquare, RefreshCw, Send, ShoppingCart, X } from "lucide-react";
+import { Bot, Loader2, MessageSquare, Plus, RefreshCw, Send, ShoppingCart, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import ItemOptionModal from "@/components/store/ItemOptionModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const FALLBACK_WELCOME = "Bonjour 👋 Je suis l'assistant de commande. Comment puis-je vous aider ?";
@@ -29,7 +31,10 @@ export default function StoreChatWidget({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); // {text, retryText, status} | null
+  // D1.54: carte produit cliquée → modale options/quantité (même parcours que le menu public).
+  const [itemModal, setItemModal] = useState(null);
   const sendingRef = useRef(false); // anti double-soumission (synchrone)
+  const addingRef = useRef(false); // anti double-ajout depuis une carte
   const endRef = useRef(null);
   const inputRef = useRef(null);
   const panelRef = useRef(null);
@@ -47,6 +52,7 @@ export default function StoreChatWidget({
   useEffect(() => {
     setMessages([]);
     setError(null);
+    setItemModal(null);
   }, [sessionEpoch]);
 
   const send = async (text, appendUser = true) => {
@@ -71,7 +77,13 @@ export default function StoreChatWidget({
         return;
       }
       onConversationChange?.(data.conversation_id);
-      setMessages((m) => [...m, { role: "assistant", content: data.message || "", cart: data.cart || null }]);
+      setMessages((m) => [...m, {
+        role: "assistant",
+        content: data.message || "",
+        cart: data.cart || null,
+        // D1.54: cartes produits du serveur (rétrocompatible: champ absent -> []).
+        products: Array.isArray(data.products) ? data.products : [],
+      }]);
       onCartChange?.(data.cart, data.cart_id);
     } catch (e) {
       // 429 (quota), 503 (provider) et erreurs réseau conservent panier et
@@ -90,6 +102,30 @@ export default function StoreChatWidget({
   const onSubmit = (e) => {
     e.preventDefault();
     send(input, true);
+  };
+
+  // D1.54: ajout direct depuis une carte de la conversation — mêmes règles que
+  // le menu public (panier créé paresseusement, serveur seul juge des prix,
+  // options et disponibilité).
+  const addFromCard = async (item, optionIds, qty) => {
+    if (addingRef.current) return;
+    addingRef.current = true;
+    try {
+      let cid = cartId;
+      if (ensureCart) cid = await ensureCart();
+      const { data } = await axios.post(`${API}/public/cart/${cid}/items`, {
+        item_id: item.id,
+        quantity: qty,
+        option_ids: optionIds,
+      });
+      onCartChange?.(data, cid);
+      setItemModal(null);
+      toast.success(`${item.name} ajouté au panier`);
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail) || "Impossible d'ajouter ce produit. Réessayez.");
+    } finally {
+      addingRef.current = false;
+    }
   };
 
   const onPanelKeyDown = (e) => {
@@ -179,6 +215,51 @@ export default function StoreChatWidget({
                       {m.content}
                     </p>
                   </div>
+                  {/* D1.54: cartes produits livrées par le backend (menu du jour,
+                      recommandation, catalogue paginé) — rendues telles quelles. */}
+                  {m.products && m.products.length > 0 && (
+                    <div className="ml-1 space-y-2" data-testid="chat-products">
+                      {m.products.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-stretch overflow-hidden rounded-xl border border-border bg-background"
+                          data-testid="chat-product"
+                        >
+                          {p.image_url ? (
+                            <img src={p.image_url} alt="" loading="lazy" className="w-16 shrink-0 object-cover" />
+                          ) : null}
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 p-2.5">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{p.name}</p>
+                              {p.description ? (
+                                <p className="line-clamp-2 text-xs text-muted-foreground">{p.description}</p>
+                              ) : null}
+                              <p className="mt-0.5 font-mono text-xs font-semibold">{formatFCFA(p.price)}</p>
+                            </div>
+                            {p.available ? (
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8 shrink-0"
+                                aria-label={`Ajouter ${p.name}`}
+                                onClick={() => setItemModal(p)}
+                                data-testid={`chat-product-add-${p.id}`}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            ) : (
+                              <span
+                                className="shrink-0 text-[11px] font-medium text-red-500"
+                                data-testid={`chat-product-unavailable-${p.id}`}
+                              >
+                                Indisponible
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {m.cart && m.cart.items && m.cart.items.length > 0 && (
                     <div
                       className="ml-1 rounded-xl border border-border bg-background p-3 text-sm"
@@ -289,6 +370,11 @@ export default function StoreChatWidget({
             </Button>
           </form>
         </div>
+      )}
+
+      {/* D1.54: options/quantité d'une carte ajoutée depuis la conversation */}
+      {itemModal && (
+        <ItemOptionModal item={itemModal} onClose={() => setItemModal(null)} onAdd={addFromCard} />
       )}
     </>
   );
