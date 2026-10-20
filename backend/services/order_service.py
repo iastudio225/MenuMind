@@ -212,6 +212,16 @@ async def add_to_cart(db, restaurant_id: str, cart: dict, item_id: str, quantity
         raise HTTPException(status_code=400, detail="Quantité invalide")
     item = await _resolve_item(db, restaurant_id, item_id)
     options = await _validate_options_for_item(db, restaurant_id, item, option_ids or [])
+    normalized = sorted(option_ids or [])
+    fresh = await get_cart(db, cart["cart_id"])
+    existing = next((i for i in fresh.get("items", [])
+                     if i.get("item_id") == item_id
+                     and sorted(i.get("option_ids") or []) == normalized), None)
+    if existing is not None:
+        existing["quantity"] = int(existing.get("quantity", 1)) + int(quantity)
+        await db.carts.update_one({"_id": fresh["_id"]},
+                                  {"$set": {"items": fresh["items"], "updated_at": now_iso()}})
+        return await get_cart(db, cart["cart_id"])
     cart_item = {
         "cart_item_id": secrets.token_hex(5),
         "item_id": item_id,

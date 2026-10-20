@@ -16,10 +16,12 @@ Reproduces then covers the two anomalies reported on the launch widget:
    tools.py: validate the cart_item_id first, raise a controlled 404 the
    model can act on (same contract as update_cart_item).
 
-order_service/cart_router (classic checkout) are deliberately untouched:
-their contract is covered by tests/test_orders.py. The fakes below mirror
-the REAL order_service semantics (push-always add, unchecked pull remove,
-validating update) so every assertion exercises the tools/agent layer only.
+order_service/cart_router (classic checkout) keep their own contracts,
+covered by tests/test_orders.py. The fakes below keep the LEGACY
+order_service semantics (push-always add, unchecked pull remove, validating update) on
+purpose: every assertion then exercises the tools/agent layer alone. The
+REAL order_service now merges identical lines itself since the étape 22
+P1-a fix (covered in tests/test_order_integrity.py, RealSvcDB section).
 """
 import json
 
@@ -111,7 +113,8 @@ class CartSvc:
         return c
 
     async def add_to_cart(self, db, restaurant_id, cart, item_id, quantity, option_ids):
-        # mirrors order_service.add_to_cart: unconditional push, no merge
+        # push-always on purpose: the tool-layer merge must hold alone
+        # (the REAL service merges identical lines since étape 22 P1-a)
         if item_id not in PRICES:
             raise HTTPException(status_code=400, detail="Article introuvable dans le menu.")
         if quantity < 1:

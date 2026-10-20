@@ -6,7 +6,8 @@ Covers the scenarios identified by the launch audit:
 - fingerprint insensitive to cart line order (G2);
 - idempotent create_order retry at conversation level AND at DB level (G3);
 - malformed model args map to controlled 400 (never 500);
-- a failed create_order never leaves a "success" text as the final message;
+- a failed create_order surfaces the SERVER refusal as the final message
+  (étape 22 P1-b: the confirmation loop must die on the server reason);
 - provider/backend failure mid-turn never yields a phantom order.
 
 Limits of this suite (G3 documentation): FakeDB simulates the unique sparse
@@ -322,8 +323,8 @@ def test_non_numeric_quantity_maps_to_400(svc):
     assert svc.cart["items"] == []
 
 
-# =============== 6. Failed create_order leaves no success text ===============
-def test_failed_create_order_does_not_leave_success_message(monkeypatch, svc):
+# =============== 6. Failed create_order surfaces the server refusal ===============
+def test_failed_create_order_surfaces_server_detail(monkeypatch, svc):
     db = FakeDB()
 
     async def boom(*a, **k):
@@ -341,7 +342,53 @@ def test_failed_create_order_does_not_leave_success_message(monkeypatch, svc):
     ]))
     out = _run(ag.process_message(db, "rest_demo_chezawa", "conv-1", "je confirme", provider))
     assert out["order"] is None
-    assert out["message"] == "Désolé, la commande n'a pas pu aboutir."
+    assert out["message"] == "La commande n'a pas pu aboutir : Panier invalide"
+
+
+# =============== 6bis. étape 22 P1-b: the confirmation loop dies ===============
+def test_create_order_loop_surfaces_server_reason(monkeypatch, svc):
+    """Client keeps confirming: the turn ends on the SERVER refusal, never on
+    a reformulated model text that silently restarts the loop."""
+    monkeypatch.setattr(ag, "svc", _AgentSvc(svc))
+    conv = _ready_conv()  # customer + fulfillment ready, but NO calculate_cart
+    db = FakeDB()
+    db.ai_conversations.docs.append(conv)
+
+    prompts = []
+    it = iter([
+        _j("Parfait, commande validée !", tool="create_order", args={}),
+        _j("Voici votre récapitulatif, dites-moi « oui » pour valider."),
+    ])
+
+    def handler(system_prompt, messages):
+        prompts.append(system_prompt)
+        return next(it)
+
+    out = _run(ag.process_message(db, "rest_demo_chezawa", "conv-1", "je confirme",
+                                  ScriptedProvider(handler)))
+    assert out["order"] is None
+    assert svc.orders_created == []
+    assert out["message"].startswith("La commande n'a pas pu aboutir :")
+    assert "panier modifié" in out["message"]
+    assert "SÉQUENCE OBLIGATOIRE" in prompts[0]
+
+
+def test_refusal_then_recalculate_clears_the_override(monkeypatch, svc):
+    """A successful follow-up tool call clears the refusal: the model's own
+    recap text is shown again (the override is last-event-only, per turn)."""
+    monkeypatch.setattr(ag, "svc", _AgentSvc(svc))
+    conv = _ready_conv()
+    db = FakeDB()
+    db.ai_conversations.docs.append(conv)
+
+    provider = ScriptedProvider(_queue([
+        _j("Je vérifie.", tool="create_order", args={}),
+        _j("Recalculons.", tool="calculate_cart", args={}),
+        _j("Récapitulatif : total 12000 FCFA. Confirmez-vous ?"),
+    ]))
+    out = _run(ag.process_message(db, "rest_demo_chezawa", "conv-1", "je confirme", provider))
+    assert out["order"] is None
+    assert out["message"] == "Récapitulatif : total 12000 FCFA. Confirmez-vous ?"
 
 
 # =============== 7. Provider failure mid-turn: no phantom order ===============
@@ -568,6 +615,52 @@ def test_real_mutation_on_open_cart_accepted():
     assert out["items"][0]["quantity"] == 3
     out = _run(real_svc.remove_cart_item(db, out, line_id))
     assert out["items"] == []
+
+
+def test_real_add_same_article_twice_merges_into_single_line():
+    """étape 22 P1-a: the shared cart service itself (cart route + AI tool)
+    must cumulate identical item+options instead of pushing a twin line."""
+    db = RealSvcDB()
+    cart = _seed_cart(db)
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, cart, RealSvcDB.ITEM_ID, 1, []))
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, out, RealSvcDB.ITEM_ID, 2, []))
+    assert len(out["items"]) == 1
+    assert out["items"][0]["quantity"] == 3
+    assert out["items"][0]["item_id"] == RealSvcDB.ITEM_ID
+
+
+def test_real_options_partition_lines_and_identical_options_merge():
+    db = RealSvcDB()
+    opt_a = "652f0000000000000000000c"
+    opt_b = "652f0000000000000000000d"
+    db.menu_items.docs[0]["option_group_ids"] = ["grp-1"]
+    db.menu_options.docs.append({"_id": ObjectId(opt_a), "restaurant_id": RealSvcDB.RID,
+                                 "group_id": "grp-1", "name": "Alloco", "price_delta": 500})
+    db.menu_options.docs.append({"_id": ObjectId(opt_b), "restaurant_id": RealSvcDB.RID,
+                                 "group_id": "grp-1", "name": "Piment", "price_delta": 0})
+    cart = _seed_cart(db)
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, cart, RealSvcDB.ITEM_ID, 1, [opt_a]))
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, out, RealSvcDB.ITEM_ID, 1, [opt_b]))
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, out, RealSvcDB.ITEM_ID, 1, []))
+    assert len(out["items"]) == 3
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, out, RealSvcDB.ITEM_ID, 2, [opt_a]))
+    assert len(out["items"]) == 3
+    merged = next(i for i in out["items"] if i["option_ids"] == [opt_a])
+    assert merged["quantity"] == 3
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, out, RealSvcDB.ITEM_ID, 1, [opt_b, opt_a]))
+    out = _run(real_svc.add_to_cart(db, RealSvcDB.RID, out, RealSvcDB.ITEM_ID, 1, [opt_a, opt_b]))
+    assert len(out["items"]) == 4
+    twin = next(i for i in out["items"] if sorted(i["option_ids"]) == sorted([opt_a, opt_b]))
+    assert twin["quantity"] == 2
+
+
+def test_real_add_rejects_invalid_quantity_without_mutation():
+    db = RealSvcDB()
+    cart = _seed_cart(db)
+    with pytest.raises(HTTPException) as e:
+        _run(real_svc.add_to_cart(db, RealSvcDB.RID, cart, RealSvcDB.ITEM_ID, 0, []))
+    assert e.value.status_code == 400
+    assert db.carts.docs[0]["items"] == []
 
 
 def test_real_mutations_on_ordered_cart_refused():
