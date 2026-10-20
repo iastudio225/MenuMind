@@ -29,6 +29,16 @@ PRODUCT_TOOLS = {"get_day_menu", "recommend_items", "show_catalog"}
 # detection is best-effort and never claimed to be perfect.
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE_RE = re.compile(r"(?<!\d)\+?\d[\d\s.()]{7,}\d(?!\d)")
+# D1.54 étape 17: explicit day-menu request detection for the deterministic
+# card safeguard (French keywords, apostrophe/typography tolerant).
+_DAY_MENU_RE = re.compile(
+    r"(?:menu|carte|plat)s?\s+(?:du|d['\u2019])\s*jour|"
+    r"(?:menu|carte)\s+d['\u2019]aujourd",
+    re.IGNORECASE)
+
+
+def _requests_day_menu(text: str) -> bool:
+    return bool(_DAY_MENU_RE.search(text or ""))
 
 
 def _redact_contacts(text: str) -> str:
@@ -183,12 +193,12 @@ OUTILS DISPONIBLES : {TOOL_NAMES}
 - calculate_cart {{}} — récupère le total officiel du serveur (à utiliser avant de présenter le récapitulatif).
 - create_order {{}} — crée la commande. À n'appeler QUE après récapitulatif + confirmation explicite du client.
 - get_available_menu {{}} / get_delivery_zones {{}} — pour relire le menu/les zones si besoin.
-- get_day_menu {{}} — UNIQUEMENT quand le client demande le menu du jour ou le plat du jour : renvoie les cartes du jour (produits validés par le serveur).
+- get_day_menu {{}} — OBLIGATOIRE dès que le client demande le menu du jour, la carte du jour ou le plat du jour : tu DOIS appeler cet outil et présenter les cartes renvoyées (produits validés par le serveur). Ne liste JAMAIS ces informations depuis la section MENU DISPONIBLE.
 - recommend_items {{"item_ids":[...]}} — UNIQUEMENT quand le client exprime une préférence (envie, goût, type de plat...) : choisis au plus 6 ids dans MENU DISPONIBLE ci-dessus puis présente les cartes renvoyées. Jamais d'identifiant hors catalogue.
 - show_catalog {{"page"?}} — UNIQUEMENT si le client demande explicitement toute la carte / le catalogue complet ; page > 0 uniquement si le client demande la suite.
 
 UTILISATION DES OUTILS (IMPORTANT) :
-- Les sections MENU DISPONIBLE, ZONES DE LIVRAISON et PANIER ci-dessus sont construites à partir des données du serveur pour ce tour : elles sont la référence et suffisent pour répondre aux questions générales sur les plats, les prix, les disponibilités, les zones et les frais.
+- Les sections MENU DISPONIBLE, ZONES DE LIVRAISON et PANIER ci-dessus sont construites à partir des données du serveur pour ce tour : elles sont la référence et suffisent pour répondre aux questions générales sur les plats, les prix, les disponibilités, les zones et les frais — SAUF le menu du jour, la carte du jour ou le plat du jour, qui exigent TOUJOURS l'outil get_day_menu (jamais une liste écrite depuis le contexte).
 - Ne pas appeler get_available_menu ni get_delivery_zones uniquement pour relire ces informations déjà présentes dans ce contexte.
 - Utiliser un outil UNIQUEMENT quand une opération réelle l'exige : modifier le panier, enregistrer le client ou la livraison, calculer le total officiel du serveur, créer la commande, ou re-vérifier une donnée dont tu as réellement besoin à l'instant.
 - N'invente JAMAIS un résultat d'outil, un plat, un prix ou une disponibilité : chaque outil renvoie une donnée validée par le serveur.
@@ -270,6 +280,9 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     # D1.54: product cards of the LAST card-bearing tool in this call; stays []
     # for a plain conversational turn (retro-compatible: new field only).
     products = []
+    # D1.54 étape 17: a successful get_day_menu already answered this turn —
+    # the end-of-turn safeguard must neither refetch nor duplicate its cards.
+    day_menu_seen = False
 
     for step in range(MAX_STEPS):
         cart = await svc.get_cart(db, conv["cart_id"], rid)
@@ -301,6 +314,8 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
                 # Server-built cards (validated ids/prices/availability) are
                 # relayed verbatim; a failed follow-up tool never clears them.
                 products = result.get("products") or []
+            if tool == "get_day_menu":
+                day_menu_seen = True
             turn_notes.append({"role": "tool", "name": tool, "content": json.dumps(result, ensure_ascii=False)})
         except HTTPException as e:
             tool_succeeded = False
@@ -313,6 +328,16 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     else:
         if not final_message:
             final_message = "Je rencontre une difficulté. Pouvez-vous reformuler votre demande ?"
+
+    # D1.54 étape 17 — garde-fou déterministe : une demande explicite de menu
+    # du jour porte ses cartes même si le modèle a répondu en texte sans outil.
+    # Jamais de repli catalogue, jamais hors tenant : les items viennent de
+    # svc.get_day_menu (plan hebdo du restaurant, ids résolus côté serveur).
+    # Une erreur de récupération propage (jamais transformée en menu vide).
+    if not products and not day_menu_seen and _requests_day_menu(user_message):
+        day = await svc.get_day_menu(db, rid)
+        if day.get("status") == "active":
+            products = day.get("items") or []
 
     # Persist only user + final assistant text (cart/draft are reloaded fresh
     # each turn); contact details are redacted in the stored copy.

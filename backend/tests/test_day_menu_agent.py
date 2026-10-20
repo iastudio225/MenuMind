@@ -9,6 +9,10 @@ registration/prompt gating.
 
 No real MongoDB, no network, no paid AI call: a ScriptedProvider replays
 canned model answers and every service call is faked.
+
+Étape 17 adds the deterministic server-side safeguard: an explicit
+day-menu request carries the active plan's cards even when the chatty
+model answers in plain text without calling any tool.
 """
 import json
 
@@ -272,3 +276,76 @@ def test_prompt_gates_day_menu_and_recommendation(harness):
     assert "get_day_menu" in p and "UNIQUEMENT" in p
     assert "recommend_items" in p and "6 ids" in p
     assert "ne présente jamais tout le catalogue" in p.lower()
+
+
+# =============== Étape 17 — garde-fou serveur déterministe =================
+def test_chatty_model_active_menu_still_gets_cards(harness):
+    """Model answers in plain text: the safeguard still attaches day cards."""
+    h = harness([_j("Voici le menu du jour : poulet ou poisson !")])
+    out = h.ask("Quel est le menu du jour ?")
+    assert h.provider_calls == 1              # single model call, no tool round
+    assert [p["id"] for p in out["products"]] == ["poulet", "poisson"]
+    # server contract preserved verbatim on every card
+    assert out["products"][0]["price"] == 5000
+    assert out["products"][0]["image_url"] == "https://img/p.jpg"
+    assert out["products"][0]["available"] is True
+    assert out["cart"]["total"] == 12000      # cart contract untouched
+    assert out["cart_id"] and out["conversation_id"]
+
+
+def test_chatty_model_absent_menu_no_cards(harness):
+    svc = DaySvc(day_menu={"day": "monday", "status": "not_configured", "items": []})
+    h = harness([_j("Dites-moi ce que vous aimez, je vous propose.")], svc=svc)
+    out = h.ask("Il y a un menu du jour ?")
+    assert svc.day_menu_calls == 1            # probed once, nothing fabricated
+    assert out["products"] == []
+
+
+def test_chatty_model_inactive_menu_no_cards(harness):
+    svc = DaySvc(day_menu={"day": "monday", "status": "inactive", "items": []})
+    h = harness([_j("Le menu du jour est désactivé aujourd'hui.")], svc=svc)
+    out = h.ask("Quel est le menu du jour ?")
+    assert svc.day_menu_calls == 1
+    assert out["products"] == []
+
+
+def test_chatty_model_empty_active_menu_no_cards(harness):
+    svc = DaySvc(day_menu={"day": "monday", "status": "active", "items": []})
+    h = harness([_j("Le menu du jour est encore vide.")], svc=svc)
+    out = h.ask("Menu du jour ?")
+    assert out["products"] == []
+
+
+def test_safeguard_never_duplicates_tool_cards(harness):
+    h = harness([
+        _j("Voici le menu.", tool="get_day_menu", args={}),
+        _j("Voici le menu du jour !"),
+    ])
+    out = h.ask("Quel est le menu du jour ?")
+    assert h.svc.day_menu_calls == 1          # no second fetch by the safeguard
+    assert [p["id"] for p in out["products"]] == ["poulet", "poisson"]
+    assert len(out["products"]) == 2          # exactly once, never doubled
+
+
+def test_safeguard_never_mixes_catalogue_items(harness):
+    """Day plan only: catalogued plat-* items never leak into the cards."""
+    h = harness([_j("Bienvenue ! Que souhaitez-vous ?")])
+    out = h.ask("La carte du jour s'il vous plaît")
+    assert {p["id"] for p in out["products"]} == {"poulet", "poisson"}
+
+
+def test_safeguard_skips_other_intents(harness):
+    h = harness([_j("La livraison coûte 1000 FCFA à Cocody.")])
+    out = h.ask("C'est combien la livraison à Cocody ?")
+    assert out["products"] == []
+    assert h.svc.day_menu_calls == 0          # guard not probed for other intents
+
+
+def test_safeguard_not_triggered_by_preference(harness):
+    h = harness([
+        _j("Je choisis.", tool="recommend_items", args={"item_ids": ["poisson"]}),
+        _j("Voici une belle sélection !"),
+    ])
+    out = h.ask("J'ai envie de poisson aujourd'hui")
+    assert h.svc.day_menu_calls == 0          # preference path never probes the guard
+    assert [p["id"] for p in out["products"]] == ["poisson"]
