@@ -5,15 +5,18 @@ from http.cookiejar import DefaultCookiePolicy
 
 import pytest
 import requests
+from dotenv import load_dotenv
 from pymongo import MongoClient
 
 DefaultCookiePolicy.return_ok_secure = lambda self, cookie, request: True
 
+load_dotenv()
+
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://127.0.0.1:8002").rstrip("/")
 API = f"{BASE_URL}/api"
 
-_mongo = MongoClient("mongodb://127.0.0.1:27017/")
-_db = _mongo["restoia-test"]
+_mongo = MongoClient(os.environ.get("MONGO_URL") or "mongodb://127.0.0.1:27017/")
+_db = _mongo[os.environ.get("DB_NAME") or "restoia-test"]
 
 SUPER_EMAIL = os.environ.get("ADMIN_EMAIL", "cooldigital.africa@gmail.com")
 SUPER_PASS = os.environ.get("ADMIN_PASSWORD", "Admin1234!")
