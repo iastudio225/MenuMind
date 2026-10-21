@@ -379,3 +379,105 @@ def test_prompt_documents_cumulation_and_cart_item_id(harness_env):
     assert "quantité RESTANTE" in p
     assert "cart_item_id fourni dans la section PANIER" in p
     assert "jamais un item_id du menu" in p
+
+
+# =============== 6. set_customer — non-destructive merge (étape 24 P1) ===============
+def _customer_tool(args, conv=None, db=None):
+    db = db or FakeDB()
+    conv = conv or _conv()
+    db.ai_conversations.docs.append(conv)
+    return _run(tools_mod.execute_tool(db, conv, "set_customer", args, "infos")), db, conv
+
+
+def test_set_customer_full_update_persists_and_returns_model_view(cart):
+    (result, extra), db, conv = _customer_tool({
+        "first_name": "Fred", "last_name": "POUPOUYA",
+        "phone": "0708000001", "email": "fred@example.ci"})
+    assert extra is None
+    assert result == {"customer": {"last_name": "POUPOUYA", "first_name": "Fred",
+                                   "contact": "enregistré"}}
+    assert conv["customer"]["first_name"] == "Fred"
+    assert conv["customer"]["phone"] == "0708000001"
+    assert db.ai_conversations.docs[0]["customer"]["email"] == "fred@example.ci"
+
+
+def test_set_customer_first_name_only_keeps_existing_fields(cart):
+    conv = _conv(customer={"first_name": "Fred", "last_name": "POUPOUYA",
+                           "phone": "0708000001", "email": ""})
+    (result, _), _, _ = _customer_tool({"first_name": "Alfred"}, conv=conv)
+    assert conv["customer"] == {"first_name": "Alfred", "last_name": "POUPOUYA",
+                                "phone": "0708000001", "email": ""}
+    assert result["customer"]["first_name"] == "Alfred"
+    assert result["customer"]["last_name"] == "POUPOUYA"
+
+
+def test_set_customer_last_name_only_keeps_first_name(cart):
+    """Audit étape 23 C3: a nom-only call must never erase the known prénom."""
+    conv = _conv(customer={"first_name": "Fred", "last_name": "POUPOUYA",
+                           "phone": "0708000001", "email": ""})
+    _customer_tool({"last_name": "KOUASSI"}, conv=conv)
+    assert conv["customer"] == {"first_name": "Fred", "last_name": "KOUASSI",
+                                "phone": "0708000001", "email": ""}
+
+
+def test_set_customer_phone_only_keeps_names(cart):
+    conv = _conv(customer={"first_name": "Fred", "last_name": "POUPOUYA",
+                           "phone": "", "email": ""})
+    _customer_tool({"phone": "0708000099"}, conv=conv)
+    assert conv["customer"] == {"first_name": "Fred", "last_name": "POUPOUYA",
+                                "phone": "0708000099", "email": ""}
+
+
+def test_set_customer_blank_and_whitespace_fields_are_ignored_and_stripped(cart):
+    conv = _conv(customer={"first_name": "Fred", "last_name": "POUPOUYA",
+                           "phone": "0708000001", "email": ""})
+    _customer_tool({"first_name": "", "last_name": "   KOUASSI   ", "email": "  "}, conv=conv)
+    assert conv["customer"] == {"first_name": "Fred", "last_name": "KOUASSI",
+                                "phone": "0708000001", "email": ""}
+
+
+def test_set_customer_no_usable_field_is_400_and_mutates_nothing(cart):
+    conv = _conv(customer={"first_name": "Fred", "last_name": "POUPOUYA",
+                           "phone": "0708000001", "email": ""})
+    db = FakeDB()
+    db.ai_conversations.docs.append(conv)
+    with pytest.raises(HTTPException) as e:
+        _tool("set_customer", {"first_name": "", "last_name": "   ", "phone": None},
+              db=db, conv=conv)
+    assert e.value.status_code == 400
+    assert e.value.detail == "Aucune information à enregistrer."
+    assert conv["customer"] == {"first_name": "Fred", "last_name": "POUPOUYA",
+                                "phone": "0708000001", "email": ""}
+    assert db.ai_conversations.docs[0]["customer"] == conv["customer"]
+
+
+def test_set_customer_successive_partial_updates_keep_full_profile(cart):
+    (result, _), _, conv = _customer_tool({
+        "first_name": "Fred", "last_name": "POUPOUYA", "phone": "0708000001"})
+    _customer_tool({"last_name": "KOUASSI"}, conv=conv)
+    _customer_tool({"first_name": "François"}, conv=conv)
+    _customer_tool({"phone": "0708000002"}, conv=conv)
+    assert conv["customer"] == {"first_name": "François", "last_name": "KOUASSI",
+                                "phone": "0708000002"}
+    assert result["customer"]["contact"] == "enregistré"
+
+
+def test_set_customer_update_targets_only_its_conversation(cart):
+    db = FakeDB()
+    conv_a = _conv()
+    conv_b = _conv(_id="conv-doc-2", conversation_id="conv-2")
+    db.ai_conversations.docs.extend([conv_a, conv_b])
+    _tool("set_customer", {"first_name": "Fred"}, db=db, conv=conv_a)
+    assert conv_a["customer"] == {"first_name": "Fred"}
+    assert conv_b["customer"] == {}
+    assert db.ai_conversations.docs[0]["customer"] == {"first_name": "Fred"}
+    assert db.ai_conversations.docs[1]["customer"] == {}
+
+
+def test_set_customer_empty_args_object_is_controlled_400(cart):
+    conv = _conv(customer={"first_name": "Fred"})
+    with pytest.raises(HTTPException) as e:
+        _tool("set_customer", {}, conv=conv)
+    assert e.value.status_code == 400
+    assert "0708" not in e.value.detail and "Fred" not in e.value.detail
+    assert conv["customer"] == {"first_name": "Fred"}

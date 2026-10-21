@@ -201,10 +201,21 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
         return view, None
 
     if tool == "set_customer":
-        cust = {
-            "first_name": args.get("first_name", ""), "last_name": args.get("last_name", ""),
-            "phone": args.get("phone", ""), "email": args.get("email", ""),
+        incoming = {
+            "first_name": args.get("first_name"), "last_name": args.get("last_name"),
+            "phone": args.get("phone"), "email": args.get("email"),
         }
+        updates = {}
+        for k, v in incoming.items():
+            if isinstance(v, str):
+                v = v.strip()
+            if v:
+                updates[k] = v
+        if not updates:
+            raise HTTPException(status_code=400, detail="Aucune information à enregistrer.")
+        # Partial update: only the provided, non-empty fields are merged over the
+        # persisted record — a blank or absent field never erases known data.
+        cust = {**(conversation.get("customer") or {}), **updates}
         # Full record stays in MongoDB for order creation; the model only gets
         # family name + first name + a neutral marker (D1.23 privacy).
         await db.ai_conversations.update_one({"_id": conversation["_id"]}, {"$set": {"customer": cust}})
