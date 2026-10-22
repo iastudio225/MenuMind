@@ -333,3 +333,85 @@ def test_business_rules_still_in_prompt(harness_env):
     assert "jamais" in p.lower()
     assert "confirmation explicite" in p.lower()
     assert "BACKEND est la seule source de vérité" in p
+
+
+# =============== 9. étape 26 P2 — technical output never reaches the client ===============
+def test_valid_action_still_executes_and_keeps_message(harness_env):
+    h = harness_env([
+        _j("Ajout au panier.", tool="add_to_cart", args={"item_id": "poulet", "quantity": 1}),
+        _j("Le poulet est dans votre panier."),
+    ])
+    out = h.ask("ajoute un poulet")
+    assert out["message"] == "Le poulet est dans votre panier."
+    assert h.svc.add_calls == 1
+
+
+def test_malformed_json_envelope_never_leaks_to_client(harness_env):
+    raw = ('```json\n{"message": "Bien reçu.", "tool": "set_customer", '
+           '"args": {"first_name": "Fred"\n```')
+    h = harness_env([raw])
+    out = h.ask("mon prénom est Fred")
+    assert "tool" not in out["message"]
+    assert "args" not in out["message"]
+    assert "```" not in out["message"]
+    assert out["message"] == "Bien reçu."
+
+
+def test_action_envelope_without_readable_message_falls_back(harness_env):
+    raw = '{"tool": "set_customer", "args": {"first_name": "Fred"}, "message": '
+    h = harness_env([raw])
+    out = h.ask("un test")
+    assert out["message"] == ag._FALLBACK_MESSAGE
+    assert "set_customer" not in out["message"]
+    assert "Fred" not in out["message"]
+    assert "args" not in out["message"]
+
+
+def test_plain_prose_response_is_unchanged(harness_env):
+    h = harness_env(["Bonjour ! Que souhaitez-vous commander ?"])
+    out = h.ask("salut")
+    assert out["message"] == "Bonjour ! Que souhaitez-vous commander ?"
+
+
+def test_message_field_holding_an_envelope_is_sanitized(harness_env):
+    inner = json.dumps({"message": "", "tool": "set_customer", "args": {"phone": "0708"}}, ensure_ascii=False)
+    h = harness_env([_j(inner)])
+    out = h.ask("un test")
+    assert out["message"] == ag._FALLBACK_MESSAGE
+    assert "set_customer" not in out["message"]
+    assert "0708" not in out["message"]
+
+
+def test_envelope_in_message_field_with_readable_text_is_unwrapped(harness_env):
+    inner = json.dumps(
+        {"message": "Poulet ajouté.", "tool": "add_to_cart", "args": {"item_id": "poulet"}},
+        ensure_ascii=False)
+    h = harness_env([_j(inner)])
+    out = h.ask("un test")
+    assert out["message"] == "Poulet ajouté."
+    assert h.svc.add_calls == 0  # tool of the inner envelope was never executed
+
+
+def test_fallback_log_carries_no_content(harness_env, caplog):
+    raw = '```json\n{"message": "X", "tool": "t", "args": {'
+    h = harness_env([raw])
+    import logging as _logging
+    with caplog.at_level(_logging.INFO):
+        out = h.ask("coucou SECRETCLIENT")
+    joined = "\n".join(r.getMessage() for r in caplog.records)
+    assert "SECRETCLIENT" not in joined
+    assert any("PARSE_FALLBACK" in r.getMessage() for r in caplog.records)
+    assert out["message"]
+
+
+def test_response_contract_keys_unchanged(harness_env):
+    h = harness_env([_j("Bonjour !")])
+    out = h.ask("salut")
+    for key in ("conversation_id", "message", "cart", "cart_id", "order", "products"):
+        assert key in out
+
+
+def test_fallback_message_used_on_empty_raw():
+    action = ag._parse_action("")
+    assert action["message"] == "Pouvez-vous reformuler ?"
+    assert action["tool"] is None and action["args"] == {}

@@ -224,6 +224,29 @@ CLIENT CONNU :
 """
 
 
+_FALLBACK_MESSAGE = "Je rencontre une difficulté. Pouvez-vous reformuler votre demande ?"
+
+
+def _looks_like_action_envelope(text: Optional[str]) -> bool:
+    if not text:
+        return False
+    t = text.strip()
+    if t.startswith("{") or "```" in t:
+        return True
+    return '"tool"' in t or '"args"' in t
+
+
+def _extract_message_field(text: str) -> Optional[str]:
+    m = re.search(r'"message"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+    if not m:
+        return None
+    try:
+        value = json.loads(f'"{m.group(1)}"')
+    except Exception:
+        return None
+    return value.strip() or None
+
+
 def _parse_action(raw: str) -> dict:
     if not raw:
         return {"message": "Pouvez-vous reformuler ?", "tool": None, "args": {}}
@@ -248,7 +271,17 @@ def _parse_action(raw: str) -> dict:
             raise ValueError
         return {"message": data.get("message", ""), "tool": data.get("tool"), "args": data.get("args") or {}}
     except Exception:
-        # Model produced plain prose — relay it as a message.
+        if _looks_like_action_envelope(text):
+            # étape 26 P2: an unreadable action envelope must never be relayed
+            # to the client (raw carries fences/tool/args). Unwrap its message
+            # field when it is safely readable, else use the fallback. Only a
+            # length is logged — no content (D1.23 log policy).
+            _log("PARSE_FALLBACK", raw_length=len(raw))
+            extracted = _extract_message_field(raw)
+            if extracted and not _looks_like_action_envelope(extracted):
+                return {"message": extracted, "tool": None, "args": {}}
+            return {"message": _FALLBACK_MESSAGE, "tool": None, "args": {}}
+        # Plain prose from the model — relay it as a message.
         return {"message": raw.strip(), "tool": None, "args": {}}
 
 
@@ -336,10 +369,22 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
             final_message = action["message"]
     else:
         if not final_message:
-            final_message = "Je rencontre une difficulté. Pouvez-vous reformuler votre demande ?"
+            final_message = _FALLBACK_MESSAGE
 
     if last_create_order_refusal:
         final_message = f"La commande n'a pas pu aboutir : {last_create_order_refusal}"
+
+    # étape 26 P2: even when the action parsed cleanly, the accompanying
+    # message may itself hold an action envelope (model self-collage).
+    # Unwrap it when readable, else fall back — raw tool/args never reach
+    # the client. Length only in logs (D1.23).
+    if _looks_like_action_envelope(final_message):
+        _log("OUTPUT_SANITIZED", raw_length=len(final_message))
+        extracted = _extract_message_field(final_message)
+        if extracted and not _looks_like_action_envelope(extracted):
+            final_message = extracted
+        else:
+            final_message = _FALLBACK_MESSAGE
 
     # D1.54 étape 17 — garde-fou déterministe : une demande explicite de menu
     # du jour porte ses cartes même si le modèle a répondu en texte sans outil.
