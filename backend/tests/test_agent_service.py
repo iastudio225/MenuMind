@@ -415,3 +415,74 @@ def test_fallback_message_used_on_empty_raw():
     action = ag._parse_action("")
     assert action["message"] == "Pouvez-vous reformuler ?"
     assert action["tool"] is None and action["args"] == {}
+
+
+# =============== 10. étape 32 P3 — display Markdown markers removed ===============
+def test_menu_line_loses_markers_keeps_content(harness_env):
+    h = harness_env([_j("* **Poulet braisé** : Poulet braisé à la braise (5000 FCFA)")])
+    out = h.ask("le menu ?")
+    assert out["message"] == "Poulet braisé : Poulet braisé à la braise (5000 FCFA)"
+
+
+def test_drinks_list_loses_markers_keeps_name_volume_price(harness_env):
+    h = harness_env([_j("* **Coca-Cola** : 33cl (1000 FCFA)")])
+    out = h.ask("les boissons ?")
+    assert out["message"] == "Coca-Cola : 33cl (1000 FCFA)"
+    assert "*" not in out["message"]
+
+
+def test_multi_line_menu_keeps_order_prices_and_lines(harness_env):
+    raw = ("* **Poulet braisé** : à la braise (5000 FCFA)\n"
+           "* **Coca-Cola** : 33cl (1000 FCFA)\n"
+           "* **Fanta** : 33cl (1000 FCFA)")
+    h = harness_env([_j(raw)])
+    out = h.ask("la carte ?")
+    lines = out["message"].split("\n")
+    assert len(lines) == 3
+    assert lines[0] == "Poulet braisé : à la braise (5000 FCFA)"
+    assert lines[1] == "Coca-Cola : 33cl (1000 FCFA)"
+    assert lines[2] == "Fanta : 33cl (1000 FCFA)"
+    assert "*" not in out["message"]
+
+
+def test_plain_french_message_untouched_by_cleanup(harness_env):
+    text = "Bonjour ! Le poulet braisé est notre spécialité, que souhaitez-vous ?"
+    h = harness_env([_j(text)])
+    out = h.ask("salut")
+    assert out["message"] == text
+
+
+def test_amounts_accents_parentheses_and_dashes_preserved(harness_env):
+    raw = ("Prix : 5 000 FCFA (frites incluses), l'agneau braisé à 12 500 FCFA.\n"
+           "Le poulet - braisé est servi le soir, un vrai régal !\n"
+           "Coca : 1 000 FCFA — Merci de votre visite.")
+    h = harness_env([_j(raw)])
+    out = h.ask("les tarifs ?")
+    assert out["message"] == raw
+
+
+def test_legitimate_asterisks_kept_emphasis_stripped():
+    calc = "2 * 1000 = 2000 et 5 * 3 = 15, soit 12 500 FCFA."
+    assert ag._strip_markdown_display(calc) == calc
+    assert ag._strip_markdown_display("Une soupe *très* bonne") == "Une soupe très bonne"
+    assert ag._strip_markdown_display("**Titre") == "Titre"
+
+
+def test_p2_filter_then_p3_cleanup_compose_safely(harness_env):
+    inner = json.dumps({"message": "**Panier** : vide", "tool": None, "args": {}}, ensure_ascii=False)
+    h = harness_env([_j(inner)])
+    out = h.ask("un test")
+    assert out["message"] == "Panier : vide"
+    assert "tool" not in out["message"] and "args" not in out["message"]
+
+
+def test_create_order_refusal_not_altered_by_cleanup(harness_env):
+    h = harness_env([
+        _j("tentative", tool="create_order", args={"order_type": "PICKUP"}),
+        _j("C'est confirmé !"),
+    ])
+    out = h.ask("je confirme la commande")
+    assert out["message"] == ("La commande n'a pas pu aboutir : "
+                               "Récapitulatif non présenté ou panier modifié : "
+                               "recalculez le panier et présentez le récapitulatif avant de confirmer.")
+    assert out["order"] is None

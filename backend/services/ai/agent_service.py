@@ -247,6 +247,24 @@ def _extract_message_field(text: str) -> Optional[str]:
     return value.strip() or None
 
 
+def _strip_markdown_display(text: str) -> str:
+    """P3: remove display-only Markdown markers from the agent message.
+
+    Both front-ends render ``message`` as literal text (widget ``textContent``,
+    React JSX), so markers would show up verbatim. Only presentation is
+    touched: bold pairs/strays, list bullets at line start, and closed
+    single-asterisk emphasis. Surrounding spaces, amounts, accents, line
+    breaks and any asterisk without a closing pair stay untouched.
+    """
+    if not text:
+        return text
+    out = re.sub(r"^([ \t]*)[*+-][ \t]+", r"\1", text, flags=re.MULTILINE)
+    out = re.sub(r"\*\*(?=\S)(.+?)(?<=\S)\*\*", r"\1", out)
+    out = out.replace("**", "")
+    out = re.sub(r"(?<![*\w])\*([^*\s][^*\n]*?)(?<!\s)\*(?!\*)", r"\1", out)
+    return out
+
+
 def _parse_action(raw: str) -> dict:
     if not raw:
         return {"message": "Pouvez-vous reformuler ?", "tool": None, "args": {}}
@@ -385,6 +403,11 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
             final_message = extracted
         else:
             final_message = _FALLBACK_MESSAGE
+
+    # étape 32 P3: both front-ends render `message` as literal text — strip
+    # display-only Markdown markers after the P2 filter (presentation never
+    # replaces the security filter: an envelope is neutralized above first).
+    final_message = _strip_markdown_display(final_message)
 
     # D1.54 étape 17 — garde-fou déterministe : une demande explicite de menu
     # du jour porte ses cartes même si le modèle a répondu en texte sans outil.
