@@ -24,6 +24,7 @@ REAL order_service now merges identical lines itself since the étape 22
 P1-a fix (covered in tests/test_order_integrity.py, RealSvcDB section).
 """
 import json
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -63,8 +64,9 @@ class FakeDB:
             return None
 
         async def insert_one(self, doc):
-            doc.setdefault("_id", f"oid-{len(self.docs) + 1}")
-            self.docs.append(doc)
+            inserted_id = f"oid-{len(self.docs) + 1}"
+            self.docs.append({**doc, "_id": inserted_id})
+            return SimpleNamespace(inserted_id=inserted_id)
 
         async def update_one(self, q, update):
             doc = await self.find_one(q)

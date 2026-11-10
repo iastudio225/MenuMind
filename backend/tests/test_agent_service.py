@@ -7,6 +7,7 @@ error feedback, MAX_STEPS bound, provider contract, and menu loading once
 per turn (D1.21 optimization).
 """
 import json
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
@@ -47,9 +48,10 @@ class FakeDB:
             return None
 
         async def insert_one(self, doc):
-            # emulate MongoDB: the driver mutates the dict with a fresh _id
-            doc.setdefault("_id", f"oid-{len(self.docs) + 1}")
-            self.docs.append(doc)
+            # Match the PostgreSQL adapter: return the id without mutating doc.
+            inserted_id = f"oid-{len(self.docs) + 1}"
+            self.docs.append({**doc, "_id": inserted_id})
+            return SimpleNamespace(inserted_id=inserted_id)
 
         async def update_one(self, q, update):
             doc = await self.find_one(q)

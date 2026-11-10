@@ -134,7 +134,8 @@ async def _get_or_create_conversation(db, restaurant_id: str, conversation_id: O
         "draft": {}, "customer": {}, "order_reference": None, "order_tracking_token": None,
         "messages": [], "created_at": svc.now_iso(), "updated_at": svc.now_iso(),
     }
-    await db.ai_conversations.insert_one(conv)
+    result = await db.ai_conversations.insert_one(conv)
+    conv["_id"] = result.inserted_id
     _log("CONVERSATION_STARTED", conversation=conv["conversation_id"], restaurant=restaurant_id)
     if provided_cart_id:
         _log("CART_LINKED", conversation=conv["conversation_id"], cart=cart_id)
