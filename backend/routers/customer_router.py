@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from bson import ObjectId
 
 from database import db
@@ -19,16 +19,13 @@ async def _stats_for(rid: str, customer_id: str) -> dict:
 
 
 @router.get("")
-async def list_customers(user: dict = Depends(MANAGE)):
+async def list_customers(page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=100),
+                        search: str = Query("", max_length=100), user: dict = Depends(MANAGE)):
     rid = tenant_id_of(user)
-    docs = await db.customers.find({"restaurant_id": rid}).sort("created_at", -1).to_list(2000)
-    out = []
-    for c in docs:
-        s = serialize(c)
-        s.update(await _stats_for(rid, str(c["_id"])))
-        out.append(s)
-    out.sort(key=lambda x: x.get("last_order_at") or "", reverse=True)
-    return out
+    rows = await db.customers_page(rid, search, page, page_size)
+    total = rows[0]["total_count"] if rows else 0
+    return {"items": [serialize(row) for row in rows], "total": total,
+            "page": page, "page_size": page_size}
 
 
 @router.get("/{customer_id}")

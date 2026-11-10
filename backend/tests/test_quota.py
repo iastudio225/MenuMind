@@ -138,14 +138,14 @@ def test_refused_request_never_calls_model(monkeypatch):
     assert calls == []
 
 
-# 8 — accepted request completes the normal path, quota incremented
+# 8 — deterministic accepted request still consumes request quota, not model quota
 def test_accepted_request_normal_flow(harness_env):
-    h = harness_env([_j("Bonjour et bienvenue !")])
+    h = harness_env([])
     out = h.ask("Bonjour")
     assert out["message"]
-    assert h.provider_calls == 1
+    assert h.provider_calls == 0
     assert len(quota._requests["rest-1"]) == 1   # message slot consumed
-    assert len(quota._model_calls["rest-1"]) == 1  # model call recorded
+    assert len(quota._model_calls.get("rest-1", [])) == 0
 
 
 # 9 — model-call budget (60/window) and per-request MAX_STEPS bound
@@ -188,7 +188,7 @@ def test_tracking_independent_of_usage_metadata(monkeypatch):
                             detail="Quota du service IA dépassé. Réessayez plus tard.")
 
     with pytest.raises(HTTPException) as e:
-        _run(ag.process_message(FakeDB(), "rest_demo_chezawa", None, "salut",
+        _run(ag.process_message(FakeDB(), "rest_demo_chezawa", None, "Je voudrais commander",
                                 ScriptedProvider(failing)))
     assert e.value.status_code == 503
     assert len(quota._model_calls.get("rest-1", [])) == 1  # recorded before the call

@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from database import db
-from models import now_iso
+from models import now_iso, serialize
 from auth import tenant_id_of
 from routers.menu_router import MANAGE, VIEW, _oid
 
@@ -59,42 +59,71 @@ async def _validate_items(rid: str, item_ids: List[str]) -> List[str]:
     return list(item_ids)
 
 
-async def _resolve_items(rid: str, item_ids: List[str]) -> list:
+def _item_view(it: dict) -> dict:
+    return {"id": str(it["_id"]), "name": it.get("name", ""),
+            "price": it.get("price", 0),
+            "image_url": it.get("image_url") or it.get("image", ""),
+            "available": it.get("available", True),
+            "active": it.get("active", True)}
+
+
+async def _resolve_items_by_ids(rid: str, item_ids: List[str]) -> dict:
     """Read-time resolution against the catalogue. Items deleted since their
     planning are silently skipped (the plan keeps the raw id until rewritten)."""
-    out = []
+    valid_ids = []
     for iid in item_ids:
         try:
-            _id = ObjectId(iid)
+            valid_ids.append(str(ObjectId(iid)))
         except Exception:
             continue
-        it = await db.menu_items.find_one({"_id": _id, "restaurant_id": rid})
-        if not it:
+    valid_ids = list(dict.fromkeys(valid_ids))
+    if not valid_ids:
+        return {}
+    items = await db.menu_items.find_by_ids(valid_ids, {"restaurant_id": rid})
+    return {str(item["_id"]): _item_view(item) for item in items}
+
+
+def _ordered_item_views(item_ids: List[str], resolved_items: dict) -> list:
+    views = []
+    for iid in item_ids:
+        try:
+            item_id = str(ObjectId(iid))
+        except Exception:
             continue
-        out.append({"id": str(it["_id"]), "name": it.get("name", ""),
-                    "price": it.get("price", 0),
-                    "image_url": it.get("image_url") or it.get("image", ""),
-                    "available": it.get("available", True),
-                    "active": it.get("active", True)})
-    return out
+        if item_id in resolved_items:
+            views.append(resolved_items[item_id])
+    return views
 
 
-async def _day_payload(rid: str, day: str, doc: Optional[dict]) -> dict:
+async def _resolve_items(rid: str, item_ids: List[str]) -> list:
+    resolved = await _resolve_items_by_ids(rid, item_ids)
+    return _ordered_item_views(item_ids, resolved)
+
+
+async def _day_payload(rid: str, day: str, doc: Optional[dict],
+                       resolved_items: Optional[dict] = None) -> dict:
     if not doc:
         return {"day": day, "configured": False, "active": False,
                 "item_ids": [], "items": []}
     item_ids = list(doc.get("item_ids", []))
     return {"day": day, "configured": True, "active": bool(doc.get("active", True)),
-            "item_ids": item_ids, "items": await _resolve_items(rid, item_ids)}
+            "item_ids": item_ids,
+            "items": (await _resolve_items(rid, item_ids) if resolved_items is None
+                      else _ordered_item_views(item_ids, resolved_items))}
 
 
 @router.get("/weekly")
 async def list_weekly(user: dict = Depends(VIEW)):
     rid = tenant_id_of(user)
-    docs = await db.weekly_menus.find({"restaurant_id": rid}).to_list(100)
+    docs, catalog = await db.weekly_menu_data(rid)
     by_day = {d.get("day"): d for d in docs if d.get("day") in DAY_SET}
-    days = [await _day_payload(rid, day, by_day.get(day)) for day in DAYS]
-    return {"days": days}
+    item_ids = [iid for doc in by_day.values() for iid in doc.get("item_ids", [])]
+    catalog_by_id = {str(item["_id"]): _item_view(item) for item in catalog}
+    # Keep deleted or cross-tenant catalogue rows out of both the plan view and editor.
+    planned_ids = set(item_ids)
+    resolved_items = {item_id: catalog_by_id[item_id] for item_id in planned_ids if item_id in catalog_by_id}
+    days = [await _day_payload(rid, day, by_day.get(day), resolved_items) for day in DAYS]
+    return {"days": days, "catalog": [serialize(item) for item in catalog]}
 
 
 @router.put("/weekly/{day}")

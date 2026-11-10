@@ -7,7 +7,7 @@ import { Minus, Plus } from "lucide-react";
 import { formatFCFA } from "@/lib/format";
 
 // D1.52: déplacé tel quel depuis StoreFront.js (extraction prévue en D1.49).
-export default function ItemOptionModal({ item, onClose, onAdd }) {
+export default function ItemOptionModal({ item, onClose, onAdd, portalContainer }) {
   const [selected, setSelected] = useState({});
   const [qty, setQty] = useState(1);
 
@@ -33,7 +33,12 @@ export default function ItemOptionModal({ item, onClose, onAdd }) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="item-option-modal">
+      <DialogContent
+        portalContainer={portalContainer}
+        overlayClassName={portalContainer ? "experience-inline-dialog-overlay" : undefined}
+        className={`max-h-[90vh] overflow-y-auto${portalContainer ? " experience-inline-dialog-content" : ""}`}
+        data-testid="item-option-modal"
+      >
         <DialogHeader><DialogTitle>{item.name}</DialogTitle>
           <DialogDescription>{item.description || "Personnalisez votre commande"}</DialogDescription></DialogHeader>
         <div className="space-y-5">

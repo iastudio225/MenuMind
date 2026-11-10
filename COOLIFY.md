@@ -2,7 +2,7 @@
 
 Repo : https://github.com/iastudio225/MenuMind
 
-Architecture déployée : `docker-compose.yml` à la racine (backend FastAPI + frontend React/nginx + MongoDB 7).
+Architecture déployée : `docker-compose.yml` à la racine (backend FastAPI + frontend React/nginx + Supabase PostgreSQL hébergé).
 
 ## Étapes dans Coolify
 
@@ -15,9 +15,9 @@ Architecture déployée : `docker-compose.yml` à la racine (backend FastAPI + f
    | `JWT_SECRET` | oui | chaîne aléatoire longue (ex. `openssl rand -hex 32`) |
    | `FRONTEND_URL` | oui | URL publique du frontend, ex. `https://menumind.example.com` (sert au CORS) |
    | `REACT_APP_BACKEND_URL` | oui | URL publique du **backend**, ex. `https://api.menumind.example.com` (brûlée dans le bundle React) |
+   | `SUPABASE_DB_URL` | oui | URI PostgreSQL de Supabase (préférer le Session Pooler pour ce backend persistant) |
    | `ADMIN_EMAIL` | conseillé | email du super-admin seedé au 1er démarrage |
    | `ADMIN_PASSWORD` | conseillé | mot de passe du super-admin (défaut vide = `admin123` — à changer !) |
-   | `DB_NAME` | non | défaut `restoia` |
    | `CORS_ORIGINS` | non | origines supplémentaires, séparées par virgules |
    | `AI_GATEWAY` | non | `gemini` (défaut) ou `bytez` |
    | `GEMINI_API_KEY` | pour l'IA | clé Gemini (laisser vide = pas d'IA, erreurs propres) |
@@ -27,8 +27,9 @@ Architecture déployée : `docker-compose.yml` à la racine (backend FastAPI + f
 4. **Domains** : attachez un domaine (ou le sous-domaine fourni par Coolify) aux services :
    - `frontend` → domaine public principal (ex. `menumind.example.com`)
    - `backend` → domaine API (ex. `api.menumind.example.com`) — le widget s'y accroche via `${REACT_APP_BACKEND_URL}/widget.js`
-   - `mongo` → aucun domaine
-5. **Deploy**. Au premier démarrage, le backend seed : super-admin + plans + restaurant démo « Chez Awa ».
+5. **Créer le schéma** : depuis `backend/`, avec `SUPABASE_DB_URL` configurée, lancer `python -m scripts.migrate_postgres`.
+6. Ajouter `SUPABASE_DB_URL` dans les variables Coolify. Comme la base est neuve, activer `MENUMIND_SEED_ON_STARTUP=true` pour créer le super-admin, les plans et le restaurant de démonstration « Chez Awa ». Définir `ADMIN_EMAIL` et `ADMIN_PASSWORD`.
+7. **Deploy**.
 
 ## Après déploiement — vérifications
 
@@ -42,4 +43,5 @@ Architecture déployée : `docker-compose.yml` à la racine (backend FastAPI + f
 
 - Le seed crée au besoin le restaurant démo (id public `rest_demo_chezawa`) — idéal pour la démo.
 - Les variables ne sont **jamais** commitées : tout passe par l'UI Coolify.
-- Retour arrière : dans Coolify, redeploy de la révision précédente (Historique des déploiements).
+- Les données MongoDB ne sont pas reprises. Le backend démarre avec les tables Supabase neuves puis crée les données de seed si `MENUMIND_SEED_ON_STARTUP=true`.
+- Retour arrière : dans Coolify, redeploy de la révision précédente (Historique des déploiements). La révision précédente attend MongoDB et ne lira pas les nouvelles écritures Postgres.

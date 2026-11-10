@@ -8,25 +8,21 @@
   Determination de l'interpreteur (direct uniquement) :
     1) parametre -PythonExe (chemin direct vers python.exe) ;
     2) python.exe de la PATH (stub WindowsApps ignore).
-  Chaque candidat est valide par une sonde "import uvicorn, fastapi, motor, dotenv"
+  Chaque candidat est valide par une sonde "import uvicorn, fastapi, asyncpg, dotenv"
   (interpreteur execute brievement, sans demarrer l'application). Si aucun candidat
   ne passe la sonde, le script s'arrete avant tout lancement (code 6).
   Le retenu est lance directement avec "-m uvicorn server:app" et son handle
   -PassTru sert de supervision.
 
-  Protection d'environnement : server.py:5 charge .env via load_dotenv sans
-  override (une variable deja presente dans l'environnement du processus gagne
-  sur .env) et database.py:4-5 construit le client MONGO_URL/DB_NAME a l'import.
-  Le wrapper exige donc, avant tout lancement, que MONGO_URL et DB_NAME soient
-  deja renseignees (non vides) dans l'environnement ET que MONGO_URL cible une
-  adresse loopback : les parametres Atlas du .env ne peuvent pas etre engages
-  accidentellement. Valeurs jamais journalisees.
+  Protection d'environnement : server.py charge .env sans override, donc
+  SUPABASE_DB_URL doit etre injectee dans l'environnement avant le lancement.
+  Seul le schema PostgreSQL est accepte. La valeur n'est jamais journalisee.
 
   Codes de sortie :
     1 = parametre invalide, 2 = port deja en ecoute, 3 = echec d'identification ou
     de lancement (voir journal), 4 = verification du port impossible, 5 = journal
     de vie inaccessible, 6 = interpreteur non determinable, 7 = Start-Process echoue,
-    8 = protection de l'environnement refusee (MONGO_URL/DB_NAME).
+    8 = protection de l'environnement refusee (SUPABASE_DB_URL).
 #>
 param(
     [string]$BindHost = "127.0.0.1",
@@ -57,7 +53,7 @@ if ($pc -and $pc.Source -notmatch 'WindowsApps') {
 $chosen = $null
 foreach ($exePath in $candidates) {
     try {
-        & $exePath -c "import uvicorn, fastapi, motor, dotenv" 2>$null | Out-Null
+        & $exePath -c "import uvicorn, fastapi, asyncpg, dotenv" 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) { $chosen = $exePath; break }
     } catch { }
 }
@@ -67,37 +63,19 @@ if (-not $chosen) {
 }
 Write-Host "Interpreteur retenu : $chosen"
 
-# --- 1bis. Protection de l'environnement (isolation vs .env Atlas)
-# Garantie mecanique : le .env charge par le fils via load_dotenv (override=False
-# par defaut) ne remplacera PAS MONGO_URL/DB_NAME deja presents dans l'environnement
-# herite. On refuse tout lancement si ces variables sont absentes/vides (sinon le
-# .env serait la seule source possible) ou si MONGO_URL ne vise pas une boucle
-# locale. Comportement d'une URI vide dans AsyncIOMotorClient n'etant pas verifiable
-# ici (aucun processus applicatif), la conception ne s'appuie jamais dessus.
-$mongoUrl = [Environment]::GetEnvironmentVariable("MONGO_URL")
-$dbName   = [Environment]::GetEnvironmentVariable("DB_NAME")
-if ([string]::IsNullOrWhiteSpace($mongoUrl) -or [string]::IsNullOrWhiteSpace($dbName)) {
-    Write-Host "Securite : MONGO_URL et DB_NAME doivent etre deja renseignees (non vides) dans l'environnement - sinon le .env ferait seule source. Aucun lancement (code 8)."
+# --- 1bis. Require explicit PostgreSQL connection injection.
+# load_dotenv does not override environment variables, so a local .env alone
+# must not silently select the database used by this launcher.
+$postgresUrl = [Environment]::GetEnvironmentVariable("SUPABASE_DB_URL")
+if ([string]::IsNullOrWhiteSpace($postgresUrl)) {
+    Write-Host "Securite : SUPABASE_DB_URL doit etre defini dans l'environnement avant lancement. Aucun lancement (code 8)."
     exit 8
 }
-if ($mongoUrl -cnotmatch '^mongodb://') {
-    Write-Host "Securite : schema MONGO_URL non prevu (attendu exactement mongodb:// ; valeur et identifiants non affiches) - aucun lancement (code 8)."
+if ($postgresUrl -cnotmatch '^postgres(ql)?://') {
+    Write-Host "Securite : URI PostgreSQL attendue dans SUPABASE_DB_URL (valeur non affichee). Aucun lancement (code 8)."
     exit 8
 }
-$mongoHost = $null
-try {
-    $mongoUri = New-Object System.Uri($mongoUrl)
-    if (-not $mongoUri.IsAbsoluteUri) { throw "URI non absolue" }
-    $mongoHost = $mongoUri.Host
-} catch { $mongoHost = $null }
-# Note IPv6 : sur PowerShell 5.1/.NET Framework, System.Uri peut normaliser ::1
-# en forme complete ([0000:...:0001]) qui tombe hors liste blanche -> refus
-# conservateur (fail-safe) volontairement conserve, sans logique IPv6 ajoutee.
-if (-not $mongoHost -or $mongoHost -cnotin @("localhost", "127.0.0.1", "::1", "[::1]")) {
-    Write-Host "Securite : hote MONGO_URL pas exactement une boucle locale (valeur non affichee) - forme malformee, non prevue ou ambigue refusee ; aucun lancement (code 8)."
-    exit 8
-}
-Write-Host "Environnement : MONGO_URL loopback et DB_NAME renseignes (valeurs jamais journalisees)."
+Write-Host "Environnement : connexion PostgreSQL injectee (valeur jamais journalisee)."
 
 # --- 2. Verification du port : conservatrice, sans texte d'exception localise
 # Interrogation CIM directe (meme donnee que Get-NetTCPConnection) : une collection

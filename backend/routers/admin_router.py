@@ -1,4 +1,5 @@
 import secrets
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from bson import ObjectId
 
@@ -22,18 +23,19 @@ async def plan_assignments_count(code: str) -> int:
 @router.get("/metrics")
 async def metrics(user: dict = Depends(require_roles(SUPER_ADMIN))):
     not_deleted = {"status": {"$ne": "deleted"}}
-    total = await db.restaurants.count_documents(not_deleted)
-    active = await db.restaurants.count_documents({"status": "active"})
-    suspended = await db.restaurants.count_documents({"status": "suspended"})
-    total_orders = await db.orders.count_documents({})
-
+    total, active, suspended, total_orders, plans, active_docs, ai_convos = await asyncio.gather(
+        db.restaurants.count_documents(not_deleted),
+        db.restaurants.count_documents({"status": "active"}),
+        db.restaurants.count_documents({"status": "suspended"}),
+        db.orders.count_documents({}),
+        db.plans.find({}).to_list(100),
+        db.restaurants.find({"status": "active"}).to_list(10000),
+        db.ai_conversations.count_documents({}),
+    )
     plan_prices = {"STARTER": 15000, "BUSINESS": 30000, "PRO": 50000}
-    for p in await db.plans.find({}).to_list(100):
+    for p in plans:
         plan_prices[p["code"]] = p.get("price", 0)
-    active_docs = await db.restaurants.find({"status": "active"}).to_list(10000)
     mrr = sum(plan_prices.get(r.get("plan", "STARTER"), 0) for r in active_docs)
-
-    ai_convos = await db.ai_conversations.count_documents({})
     return {
         "total_restaurants": total,
         "active_restaurants": active,
@@ -46,17 +48,7 @@ async def metrics(user: dict = Depends(require_roles(SUPER_ADMIN))):
 
 @router.get("/restaurants")
 async def list_restaurants(user: dict = Depends(require_roles(SUPER_ADMIN))):
-    docs = await db.restaurants.find({"status": {"$ne": "deleted"}}).sort("created_at", -1).to_list(1000)
-    result = []
-    for d in docs:
-        rid = str(d["_id"])
-        owner = await db.users.find_one({"restaurant_id": rid, "role": RESTAURANT_OWNER})
-        orders = await db.orders.count_documents({"restaurant_id": rid})
-        s = serialize(d)
-        s["owner_email"] = owner["email"] if owner else None
-        s["orders_count"] = orders
-        result.append(s)
-    return result
+    return [serialize(doc) for doc in await db.admin_restaurants_with_stats()]
 
 
 @router.get("/restaurants/{restaurant_id}")

@@ -39,6 +39,8 @@ export default function OrdersPage() {
   const canCancel = user?.role === "RESTAURANT_OWNER" || user?.role === "RESTAURANT_MANAGER";
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -47,23 +49,25 @@ export default function OrdersPage() {
 
   const load = useCallback(async (silent = false) => {
     try {
-      const { data } = await api.get("/orders", { params: filter === "all" ? {} : { status: filter } });
+      const { data } = await api.get("/orders", { params: { ...(filter === "all" ? {} : { status: filter }), page, page_size: 50 } });
+      const items = Array.isArray(data) ? data : data.items;
+      setTotal(Array.isArray(data) ? data.length : data.total);
       if (!firstLoad.current && !silent) {/* noop */}
       // new order detection (only when viewing all / pending)
       if (!firstLoad.current) {
-        const fresh = data.filter((o) => !knownIds.current.has(o.id) && o.status === "PENDING");
+        const fresh = items.filter((o) => !knownIds.current.has(o.id) && o.status === "PENDING");
         if (fresh.length) {
           fresh.forEach((o) => toast(`🔔 Nouvelle commande ${o.reference}`, { description: formatFCFA(o.total) }));
         }
       }
-      data.forEach((o) => knownIds.current.add(o.id));
+      items.forEach((o) => knownIds.current.add(o.id));
       firstLoad.current = false;
-      setOrders(data);
+      setOrders(items);
     } catch (e) { if (!silent) toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
     finally { setLoading(false); }
-  }, [filter]);
+  }, [filter, page]);
 
-  useEffect(() => { firstLoad.current = true; setLoading(true); load(); }, [filter, load]);
+  useEffect(() => { firstLoad.current = true; setPage(1); setLoading(true); load(); }, [filter, page, load]);
 
   // polling for new orders
   useEffect(() => {
@@ -152,6 +156,16 @@ export default function OrdersPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && total > 50 && (
+        <div className="flex items-center justify-between mt-4 text-sm">
+          <span className="text-muted-foreground">{(page - 1) * 50 + 1}–{Math.min(page * 50, total)} sur {total}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Précédent</Button>
+            <Button variant="outline" size="sm" disabled={page * 50 >= total} onClick={() => setPage((p) => p + 1)}>Suivant</Button>
           </div>
         </div>
       )}

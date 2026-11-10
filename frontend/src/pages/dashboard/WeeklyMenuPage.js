@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +36,6 @@ export default function WeeklyMenuPage() {
   const { user } = useAuth();
   const canManage = user?.role === "RESTAURANT_OWNER" || user?.role === "RESTAURANT_MANAGER";
 
-  const [loading, setLoading] = useState(true);
   const [days, setDays] = useState([]);
   const [catalog, setCatalog] = useState([]);
   const [sel, setSel] = useState("monday");
@@ -49,15 +49,20 @@ export default function WeeklyMenuPage() {
   const [copyGuard, setCopyGuard] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const load = async () => {
-    try {
-      const [w, m] = await Promise.all([api.get("/menu/weekly"), api.get("/menu/items")]);
-      setDays(w.data.days);
-      setCatalog(m.data);
-    } catch (e) { err(e); } finally { setLoading(false); }
-  };
+  const { data: weeklyData, isLoading: loading, error: loadError } = useQuery({
+    queryKey: ["weekly-menu", user?.restaurant_id],
+    queryFn: async () => (await api.get("/menu/weekly")).data,
+    enabled: !!user,
+  });
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (weeklyData) {
+      setDays(weeklyData.days || []);
+      setCatalog(weeklyData.catalog || []);
+    }
+  }, [weeklyData]);
+
+  useEffect(() => { if (loadError) err(loadError); }, [loadError]);
 
   const catalogById = useMemo(
     () => Object.fromEntries(catalog.map((i) => [i.id, i])), [catalog]);
@@ -275,7 +280,7 @@ export default function WeeklyMenuPage() {
             {planned.map((it) => (
               <div key={it.id} className="flex items-center gap-3 py-3 flex-wrap" data-testid={`planned-row-${it.id}`}>
                 <div className="w-10 h-10 rounded-lg bg-secondary grid place-items-center overflow-hidden shrink-0">
-                  {it.image_url ? <img src={it.image_url} alt="" className="w-full h-full object-cover" />
+                  {it.image_url ? <img src={it.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
                 </div>
                 <div className="flex-1 min-w-[140px]">
@@ -406,7 +411,7 @@ function AddProductsDialog({ open, onClose, catalog, existingIds, onConfirm }) {
               data-testid={`add-candidate-${it.id}`}>
               <input type="checkbox" checked={picked.includes(it.id)} onChange={() => toggle(it.id)} />
               <div className="w-8 h-8 rounded-lg bg-secondary grid place-items-center overflow-hidden shrink-0">
-                {it.image_url ? <img src={it.image_url} alt="" className="w-full h-full object-cover" />
+                {it.image_url ? <img src={it.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
               </div>
               <span className="flex-1 text-sm font-medium flex items-center gap-2 flex-wrap">

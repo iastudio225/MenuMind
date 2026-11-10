@@ -1,4 +1,5 @@
 from typing import Optional
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel, Field
 
@@ -76,6 +77,7 @@ async def track_order(tracking_token: str):
 # ================= DASHBOARD =================
 @router.get("")
 async def list_orders(status: Optional[str] = None, period: Optional[str] = None,
+                      page: int = 1, page_size: int = 50,
                       user: dict = Depends(OPERATE)):
     rid = tenant_id_of(user)
     q = {"restaurant_id": rid}
@@ -91,8 +93,14 @@ async def list_orders(status: Optional[str] = None, period: Optional[str] = None
         else:
             start = now - timedelta(days=30)
         q["created_at"] = {"$gte": start.isoformat()}
-    docs = await db.orders.find(q).sort("created_at", -1).to_list(2000)
-    return [serialize(d) for d in docs]
+    page = max(1, page)
+    page_size = min(100, max(1, page_size))
+    docs, total = await asyncio.gather(
+        db.orders.find(q).sort("created_at", -1).skip((page - 1) * page_size).limit(page_size).to_list(),
+        db.orders.count_documents(q),
+    )
+    return {"items": [serialize(d) for d in docs], "total": total,
+            "page": page, "page_size": page_size}
 
 
 @router.get("/{order_id}")

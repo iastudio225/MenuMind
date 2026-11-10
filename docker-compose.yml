@@ -1,4 +1,4 @@
-# Déploiement Coolify — MenuMind (backend + frontend + MongoDB)
+# Déploiement Coolify — MenuMind (backend + frontend + Supabase PostgreSQL)
 # Usage dans Coolify : ressource « Docker Compose », repo git, ce fichier à la racine.
 # Les variables ${...} sont injectées depuis l'UI Coolify (onglet Environment).
 
@@ -7,9 +7,11 @@ services:
     build:
       context: ./backend
     environment:
-      # Base de données (interne au compose, service "mongo")
-      MONGO_URL: mongodb://mongo:27017
-      DB_NAME: ${DB_NAME:-restoia}
+      # Enable once for a new Supabase database to create demo and admin records.
+      MENUMIND_ENV: production
+      MENUMIND_SEED_ON_STARTUP: ${MENUMIND_SEED_ON_STARTUP:-true}
+      # Supabase PostgreSQL URI (keep the password in Coolify secrets)
+      SUPABASE_DB_URL: ${SUPABASE_DB_URL:?SUPABASE_DB_URL manquant — définir dans Coolify}
       # Sécurité — OBLIGATOIRE à définir dans Coolify
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant — définir dans Coolify}
       # CORS : origin publique du frontend (ex. https://votre-domaine)
@@ -25,8 +27,6 @@ services:
       AI_MODEL: ${AI_MODEL:-google/gemini-2.5-flash}
       BYTEZ_API_KEY: ${BYTEZ_API_KEY:-}
       BYTEZ_PROVIDER_KEY: ${BYTEZ_PROVIDER_KEY:-}
-    depends_on:
-      - mongo
     restart: unless-stopped
     healthcheck:
       # python:slim n'a ni curl ni wget — on passe par urllib (sort non-0 si status != 2xx)
@@ -52,19 +52,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-
-  mongo:
-    image: mongo:7
-    volumes:
-      - mongo_data:/data/db
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    # Ne jamais exposer 27017 publiquement
-
-volumes:
-  mongo_data:

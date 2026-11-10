@@ -15,6 +15,7 @@ from fastapi import HTTPException
 from services import order_service as svc
 from services.ai import quota
 from services.ai.tools import execute_tool, TOOL_NAMES
+from services.ai import deterministic_resolver
 
 logger = logging.getLogger(__name__)
 MAX_STEPS = 6
@@ -326,7 +327,13 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     # before the loop instead of once per step. Server-side validation at tool
     # execution time remains the source of truth for prices and availability.
     menu = await svc.get_available_menu(db, rid)
-    final_message = ""
+    # Resolve supported read-only intents before reserving a model-call slot.
+    # The restaurant id has already been resolved and request-rate quota kept.
+    initial_cart = await svc.get_cart(db, conv["cart_id"], rid)
+    initial_draft = conv.get("draft", {}) or {}
+    initial_fee = initial_draft.get("delivery_fee", 0) if initial_draft.get("order_type") == "DELIVERY" else 0
+    initial_cart_view = await svc.calculate_cart(db, rid, initial_cart, delivery_fee=initial_fee)
+    final_message = deterministic_resolver.resolve(user_message, restaurant, menu, initial_cart_view) or ""
     order_summary = None
     turn_notes = []
     # D1.54: product cards of the LAST card-bearing tool in this call; stays []
@@ -340,7 +347,7 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
     # learning WHY the server refused.
     last_create_order_refusal = None
 
-    for step in range(MAX_STEPS):
+    for step in range(MAX_STEPS if not final_message else 0):
         cart = await svc.get_cart(db, conv["cart_id"], rid)
         draft = conv.get("draft", {}) or {}
         fee = draft.get("delivery_fee", 0) if draft.get("order_type") == "DELIVERY" else 0
@@ -350,6 +357,10 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
 
         # Reserve the model call before generate: when the restaurant budget is
         # exhausted the request stops here with 429, without calling the model.
+        # Public chat supplies a factory so configuration/API keys are not
+        # loaded on deterministic turns. Console tests may still pass a provider.
+        if not hasattr(provider, "generate"):
+            provider = provider()
         quota.record_model_call(rid)
         raw = await provider.generate(system_prompt, transcript + turn_notes)
         action = _parse_action(raw)

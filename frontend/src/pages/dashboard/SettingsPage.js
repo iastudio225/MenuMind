@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Save, Copy } from "lucide-react";
+import { Loader2, Save, Copy, ExternalLink, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatApiErrorDetail } from "@/lib/format";
+import { buildExperienceUrl } from "@/lib/publicLinks";
 import { useAuth } from "@/context/AuthContext";
 
 const DAYS = [
@@ -47,6 +48,9 @@ export default function SettingsPage() {
   const embedCode = data
     ? `<script src="${process.env.REACT_APP_BACKEND_URL}/widget.js"\n  data-restaurant="${data.public_id}"></script>`
     : "";
+  const chatbotUrl = data?.public_id
+    ? buildExperienceUrl(window.location.origin, data.public_id)
+    : "";
 
   const copyEmbed = async () => {
     try {
@@ -54,6 +58,33 @@ export default function SettingsPage() {
       toast.success("Code d'intégration copié");
     } catch {
       toast.error("Copie impossible — sélectionnez le code manuellement");
+    }
+  };
+
+  const copyChatbotLink = async () => {
+    try {
+      await navigator.clipboard.writeText(chatbotUrl);
+      toast.success("Lien du chatbot copié");
+    } catch {
+      toast.error("Copie impossible — sélectionnez le lien manuellement");
+    }
+  };
+
+  const shareChatbotLink = async () => {
+    if (typeof navigator.share !== "function") {
+      await copyChatbotLink();
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: `Chatbot de ${data.name || "votre restaurant"}`,
+        text: "Découvrez le menu et commandez avec notre assistant.",
+        url: chatbotUrl,
+      });
+      toast.success("Lien partagé");
+    } catch (error) {
+      if (error?.name !== "AbortError") await copyChatbotLink();
     }
   };
 
@@ -67,6 +98,7 @@ export default function SettingsPage() {
           <TabsTrigger value="restaurant" data-testid="tab-restaurant">Restaurant</TabsTrigger>
           <TabsTrigger value="hours" data-testid="tab-hours">Horaires</TabsTrigger>
           <TabsTrigger value="widget" data-testid="tab-widget">Widget</TabsTrigger>
+          <TabsTrigger value="chatbot" data-testid="tab-chatbot">Chatbot</TabsTrigger>
         </TabsList>
 
         <TabsContent value="restaurant" className="mt-6">
@@ -140,6 +172,34 @@ export default function SettingsPage() {
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1" /> Enregistrer</>}
               </Button>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="chatbot" className="mt-6">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="space-y-2">
+              <h2 className="font-heading text-xl font-semibold">Votre chatbot</h2>
+              <p className="text-sm text-muted-foreground">
+                Partagez ce lien avec vos clients pour leur permettre de découvrir votre menu et de commander directement avec votre assistant.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="chatbot-public-link">Lien public</Label>
+              <Input id="chatbot-public-link" readOnly value={chatbotUrl} data-testid="chatbot-public-link" />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button onClick={copyChatbotLink} disabled={!chatbotUrl} data-testid="copy-chatbot-link">
+                <Copy className="w-4 h-4" /> Copier le lien
+              </Button>
+              <Button asChild variant="outline" disabled={!chatbotUrl} data-testid="open-chatbot-link">
+                <a href={chatbotUrl || undefined} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-4 h-4" /> Ouvrir le chatbot
+                </a>
+              </Button>
+              <Button variant="outline" onClick={shareChatbotLink} disabled={!chatbotUrl} data-testid="share-chatbot-link">
+                <Share2 className="w-4 h-4" /> Partager
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

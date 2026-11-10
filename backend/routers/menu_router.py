@@ -1,4 +1,5 @@
 from typing import Optional, List
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from bson import ObjectId
@@ -301,11 +302,16 @@ async def reorder_items(body: ReorderBody, user: dict = Depends(MANAGE)):
 @router.get("/option-groups")
 async def list_option_groups(user: dict = Depends(VIEW)):
     rid = tenant_id_of(user)
-    groups = await db.menu_option_groups.find({"restaurant_id": rid}).sort("display_order", 1).to_list(500)
+    groups, options = await asyncio.gather(
+        db.menu_option_groups.find({"restaurant_id": rid}).sort("display_order", 1).to_list(500),
+        db.menu_options.find({"restaurant_id": rid}).sort("display_order", 1).to_list(2000),
+    )
+    options_by_group = {}
+    for option in options:
+        options_by_group.setdefault(option.get("group_id"), []).append(option)
     result = []
     for g in groups:
-        opts = await db.menu_options.find({"restaurant_id": rid, "group_id": str(g["_id"])}) \
-            .sort("display_order", 1).to_list(500)
+        opts = options_by_group.get(str(g["_id"]), [])
         gs = serialize(g)
         gs["options"] = [serialize(o) for o in opts]
         result.append(gs)
@@ -426,21 +432,24 @@ async def public_catalog(restaurant_public_id: str):
         raise HTTPException(status_code=404, detail="Restaurant introuvable")
     rid = str(restaurant["_id"])
 
-    categories = await db.menu_categories.find({"restaurant_id": rid, "active": True}) \
-        .sort("display_order", 1).to_list(500)
-
-    # Preload active option groups + options for this tenant
-    groups = {str(g["_id"]): g for g in
-              await db.menu_option_groups.find({"restaurant_id": rid, "active": True}).to_list(500)}
+    # Fetch the public catalogue in parallel, avoiding one item query per category.
+    categories, group_docs, option_docs, item_docs = await asyncio.gather(
+        db.menu_categories.find({"restaurant_id": rid, "active": True}).sort("display_order", 1).to_list(500),
+        db.menu_option_groups.find({"restaurant_id": rid, "active": True}).to_list(500),
+        db.menu_options.find({"restaurant_id": rid, "active": True}).sort("display_order", 1).to_list(2000),
+        db.menu_items.find({"restaurant_id": rid, "active": True}).sort("display_order", 1).to_list(2000),
+    )
+    groups = {str(g["_id"]): g for g in group_docs}
     options_by_group = {}
-    for o in await db.menu_options.find({"restaurant_id": rid, "active": True}).sort("display_order", 1).to_list(2000):
+    for o in option_docs:
         options_by_group.setdefault(o["group_id"], []).append(o)
+    items_by_category = {}
+    for item in item_docs:
+        items_by_category.setdefault(item.get("category_id"), []).append(item)
 
     out_categories = []
     for cat in categories:
-        items = await db.menu_items.find(
-            {"restaurant_id": rid, "category_id": str(cat["_id"]), "active": True}) \
-            .sort("display_order", 1).to_list(2000)
+        items = items_by_category.get(str(cat["_id"]), [])
         out_items = []
         for it in items:
             item_groups = []

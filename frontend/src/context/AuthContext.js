@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import api from "@/lib/api";
+import api, { SESSION_INVALIDATED_EVENT } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -12,13 +12,18 @@ export function AuthProvider({ children }) {
       setUser(data);
       return data;
     } catch (e) {
-      setUser(false);
+      if ([401, 403].includes(e.response?.status)) {
+        setUser(false);
+      }
       return false;
     }
   }, []);
 
   useEffect(() => {
+    const handleSessionInvalidated = () => setUser(false);
+    window.addEventListener(SESSION_INVALIDATED_EVENT, handleSessionInvalidated);
     refresh();
+    return () => window.removeEventListener(SESSION_INVALIDATED_EVENT, handleSessionInvalidated);
   }, [refresh]);
 
   const login = async (email, password) => {

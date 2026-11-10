@@ -52,9 +52,8 @@ class ChatBody(BaseModel):
 async def chat(body: ChatBody, request: Request):
     ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
     _rate_limit(ip)
-    provider = get_configured_provider()
     return await agent_service.process_message(
-        db, body.restaurant_public_id, body.conversation_id, body.message, provider,
+        db, body.restaurant_public_id, body.conversation_id, body.message, get_configured_provider,
         cart_id=body.cart_id)
 
 

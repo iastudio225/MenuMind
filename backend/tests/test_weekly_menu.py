@@ -44,6 +44,7 @@ class FakeCol:
     def __init__(self):
         self.docs = []
         self._n = 0
+        self.find_by_ids_calls = 0
 
     @staticmethod
     def _matches(doc, query):
@@ -57,6 +58,13 @@ class FakeCol:
 
     def find(self, query):
         return FakeCursor([d for d in self.docs if self._matches(d, query)])
+
+    async def find_by_ids(self, ids, query=None):
+        self.find_by_ids_calls += 1
+        wanted = {str(ident) for ident in ids}
+        query = query or {}
+        return [d for d in self.docs
+                if str(d.get("_id")) in wanted and self._matches(d, query)]
 
     async def insert_one(self, doc):
         self._n += 1
@@ -121,6 +129,25 @@ def test_get_returns_seven_days_in_order(env):
     assert [d["day"] for d in out["days"]] == wm.DAYS
     assert all(d["configured"] is False and d["item_ids"] == [] and d["items"] == []
                for d in out["days"])
+    assert env.menu_items.find_by_ids_calls == 0
+
+
+def test_get_resolves_all_weekly_items_in_one_batch(env):
+    p1 = add_item(env, "rest-A", "Poulet")
+    p2 = add_item(env, "rest-A", "Poisson")
+    p3 = add_item(env, "rest-A", "Attiéké")
+    for day, item in zip(wm.DAYS[:3], [p1, p2, p3]):
+        env.weekly_menus.docs.append({
+            "_id": f"weekly-{day}", "restaurant_id": "rest-A", "day": day,
+            "active": True, "item_ids": [str(item["_id"])],
+        })
+
+    out = run(wm.list_weekly(user=OWNER_A))
+
+    assert env.menu_items.find_by_ids_calls == 1
+    assert [[item["name"] for item in day["items"]] for day in out["days"][:3]] == [
+        ["Poulet"], ["Poisson"], ["Attiéké"],
+    ]
 
 
 # =============== 2. PUT creates + resolves + audits ===============

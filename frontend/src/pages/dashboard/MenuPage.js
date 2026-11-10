@@ -193,7 +193,7 @@ export default function MenuPage() {
                 {(itemsByCat[cat.id] || []).map((it, ii) => (
                   <div key={it.id} className="flex items-center gap-3 px-5 py-3 flex-wrap" data-testid={`item-row-${it.id}`}>
                     <div className="w-10 h-10 rounded-lg bg-secondary grid place-items-center overflow-hidden shrink-0">
-                      {it.image_url ? <img src={it.image_url} alt="" className="w-full h-full object-cover" /> : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
+                      {it.image_url ? <img src={it.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
                     </div>
                     <div className="flex-1 min-w-[140px]">
                       <p className="font-medium flex items-center gap-2">

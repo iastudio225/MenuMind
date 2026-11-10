@@ -4,6 +4,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Phone, ShoppingBag, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -13,14 +14,20 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [detail, setDetail] = useState(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    api.get("/customers").then(({ data }) => setCustomers(data))
+    setLoading(true);
+    api.get("/customers", { params: { page, page_size: 50, search } }).then(({ data }) => {
+      setCustomers(Array.isArray(data) ? data : data.items);
+      setTotal(Array.isArray(data) ? data.length : data.total);
+    })
       .catch((e) => toast.error(formatApiErrorDetail(e.response?.data?.detail)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [page, search]);
 
   const openDetail = async (c) => {
     setOpen(true); setDetail(null);
@@ -28,11 +35,7 @@ export default function CustomersPage() {
     catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
   };
 
-  const filtered = customers.filter((c) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return `${c.first_name} ${c.last_name} ${c.phone}`.toLowerCase().includes(q);
-  });
+  const filtered = customers;
 
   return (
     <div className="max-w-5xl">
@@ -44,7 +47,7 @@ export default function CustomersPage() {
       <div className="relative mb-5 max-w-sm">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" placeholder="Rechercher nom ou téléphone…" value={search}
-          onChange={(e) => setSearch(e.target.value)} data-testid="customers-search" />
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }} data-testid="customers-search" />
       </div>
 
       {loading ? (
@@ -77,6 +80,16 @@ export default function CustomersPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && total > 50 && (
+        <div className="flex items-center justify-between mt-4 text-sm">
+          <span className="text-muted-foreground">{(page - 1) * 50 + 1}–{Math.min(page * 50, total)} sur {total}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Précédent</Button>
+            <Button variant="outline" size="sm" disabled={page * 50 >= total} onClick={() => setPage((p) => p + 1)}>Suivant</Button>
           </div>
         </div>
       )}

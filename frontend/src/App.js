@@ -23,6 +23,7 @@ import OrdersPage from "@/pages/dashboard/OrdersPage";
 import CustomersPage from "@/pages/dashboard/CustomersPage";
 import DeliveryPage from "@/pages/dashboard/DeliveryPage";
 import StoreFront from "@/pages/StoreFront";
+import ExperiencePage from "@/pages/ExperiencePage";
 import SuperAdmin from "@/pages/admin/SuperAdmin";
 
 function RootRedirect() {
@@ -46,6 +47,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/order/:publicId" element={<StoreFront />} />
+            <Route path="/experience/:publicId" element={<ExperiencePage />} />
 
             <Route
               path="/onboarding"

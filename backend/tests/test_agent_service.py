@@ -76,6 +76,9 @@ class FakeSvc:
         self.add_calls = 0
         self.create_order_calls = []
         self.total = 12000  # server truth
+        self.restaurant_data = {"_id": "rest-1", "name": "Chez Awa", "public_id": "rest_demo_chezawa"}
+        self.menu_data = {"categories": [{"id": "c1", "items": [
+            {"id": "poulet", "name": "Poulet braisé", "price": 5000, "available": True}]}]}
 
     def now_iso(self):
         return "2026-10-09T12:00:00Z"
@@ -84,15 +87,14 @@ class FakeSvc:
         # mirrors order_service: unknown/inactive -> 404 before any quota
         if public_id != "rest_demo_chezawa":
             raise HTTPException(status_code=404, detail="Restaurant introuvable")
-        return {"_id": "rest-1", "name": "Chez Awa", "public_id": public_id}
+        return {**self.restaurant_data, "public_id": public_id}
 
     async def create_cart(self, db, restaurant_id, session_id=None):
         return {"cart_id": "cart-1"}
 
     async def get_available_menu(self, db, restaurant_id):
         self.menu_calls += 1
-        return {"categories": [{"id": "c1", "items": [
-            {"id": "poulet", "name": "Poulet braisé", "price": 5000, "available": True}]}]}
+        return self.menu_data
 
     async def get_delivery_zones(self, db, restaurant_id, active_only=False):
         self.zones_calls += 1
@@ -179,12 +181,30 @@ def _j(message, tool=None, args=None):
 
 # =============== 1. Salutation: no useless tool ===============
 def test_greeting_single_model_call_no_tool(harness_env):
-    h = harness_env([_j("Bonjour et bienvenue ! Que souhaitez-vous commander ?")])
+    h = harness_env([])
     out = h.ask("Bonjour")
     assert out["message"]
-    assert h.provider_calls == 1
+    assert h.provider_calls == 0
     assert h.tool_calls == 0
     assert h.svc.add_calls == 0 and not h.svc.create_order_calls
+    assert len(quota._requests["rest-1"]) == 1
+    assert quota._model_calls.get("rest-1", []) == []
+
+
+def test_deterministic_turn_does_not_even_construct_provider(monkeypatch):
+    h = AgentHarness([])
+    monkeypatch.setattr(ag, "svc", h.svc)
+    monkeypatch.setattr(tools_mod, "svc", h.svc)
+    factory_calls = []
+
+    def provider_factory():
+        factory_calls.append(True)
+        return h.provider
+
+    out = _run(ag.process_message(h.db, "rest_demo_chezawa", None, "Bonjour", provider_factory))
+    assert out["message"]
+    assert factory_calls == []
+    assert quota._model_calls.get("rest-1", []) == []
 
 
 # =============== 2. Menu question answered from context ===============
@@ -200,7 +220,7 @@ def test_menu_question_uses_provided_context(harness_env):
 
 def test_prompt_instructs_not_to_re_read_menu_and_zones(harness_env):
     h = harness_env([_j("Bienvenue !")])
-    h.ask("Bonjour")
+    h.ask("Je voudrais commander")
     p = h.prompts[0]
     assert "get_available_menu" in p and "get_delivery_zones" in p
     assert "ne pas" in p.lower() and "déjà" in p.lower()
@@ -281,11 +301,11 @@ def test_order_without_confirmation_is_blocked(harness_env):
         _j("Tentative.", tool="create_order", args={}),
         _j("Confirmation requise pour continuer."),
     ])
-    out = h.ask("bonjour")
+    out = h.ask("je souhaite commander")
     assert out["order"] is None
     assert not h.svc.create_order_calls  # hard guard AFFIRM in tools.py
     # tool error fed back to the model (in messages), not invented
-    assert "Confirmation explicite" in json.dumps(h.turns[-1], ensure_ascii=False)
+    assert "Récapitulatif non présenté" in json.dumps(h.turns[-1], ensure_ascii=False)
 
 
 # =============== 6. Tool error handled cleanly ===============
@@ -327,7 +347,7 @@ def test_provider_contract_unchanged():
 # =============== Prompt safety: business rules untouched ===============
 def test_business_rules_still_in_prompt(harness_env):
     h = harness_env([_j("OK")])
-    h.ask("Bonjour")
+    h.ask("Je voudrais commander")
     p = h.prompts[0]
     assert "RÈGLES ABSOLUES" in p
     assert "jamais" in p.lower()
@@ -369,7 +389,7 @@ def test_action_envelope_without_readable_message_falls_back(harness_env):
 
 def test_plain_prose_response_is_unchanged(harness_env):
     h = harness_env(["Bonjour ! Que souhaitez-vous commander ?"])
-    out = h.ask("salut")
+    out = h.ask("Je voudrais commander")
     assert out["message"] == "Bonjour ! Que souhaitez-vous commander ?"
 
 
@@ -406,7 +426,7 @@ def test_fallback_log_carries_no_content(harness_env, caplog):
 
 def test_response_contract_keys_unchanged(harness_env):
     h = harness_env([_j("Bonjour !")])
-    out = h.ask("salut")
+    out = h.ask("Je voudrais commander")
     for key in ("conversation_id", "message", "cart", "cart_id", "order", "products"):
         assert key in out
 
@@ -448,7 +468,7 @@ def test_multi_line_menu_keeps_order_prices_and_lines(harness_env):
 def test_plain_french_message_untouched_by_cleanup(harness_env):
     text = "Bonjour ! Le poulet braisé est notre spécialité, que souhaitez-vous ?"
     h = harness_env([_j(text)])
-    out = h.ask("salut")
+    out = h.ask("Je souhaite en savoir plus")
     assert out["message"] == text
 
 
@@ -486,3 +506,71 @@ def test_create_order_refusal_not_altered_by_cleanup(harness_env):
                                "Récapitulatif non présenté ou panier modifié : "
                                "recalculez le panier et présentez le récapitulatif avant de confirmer.")
     assert out["order"] is None
+
+
+# =============== Deterministic MVP: no provider for grounded read-only intents ===============
+def test_deterministic_hours_and_missing_hours_without_model(harness_env):
+    h = harness_env([])
+    h.svc.restaurant_data.update({"onboarding_completed": True, "opening_hours": {
+        "monday": {"open": "09:00", "close": "18:30", "closed": False},
+        "tuesday": {"closed": True}}})
+    out = h.ask("Quels sont vos horaires ?")
+    assert "Lundi : 09:00–18:30" in out["message"]
+    assert "Mardi : fermé" in out["message"]
+    assert h.provider_calls == 0
+
+    h2 = harness_env([])
+    h2.svc.restaurant_data.update({"onboarding_completed": False, "opening_hours": {
+        "monday": {"open": "11:00", "close": "22:00", "closed": False}}})
+    out2 = h2.ask("À quelle heure ouvrez-vous ?")
+    assert "ne sont pas renseignés" in out2["message"]
+    assert "11:00" not in out2["message"]
+    assert h2.provider_calls == 0
+
+
+def test_deterministic_price_and_unavailable_use_live_catalog(harness_env):
+    h = harness_env([])
+    out = h.ask("Quel est le prix du poulet braisé ?")
+    assert "5 000 FCFA" in out["message"]
+    assert h.provider_calls == 0
+    h.svc.menu_data["categories"][0]["items"][0]["available"] = False
+    out = h.ask("Le poulet braisé est-il disponible ?")
+    assert "temporairement indisponible" in out["message"]
+    assert h.provider_calls == 0
+
+
+def test_ambiguous_product_falls_back_to_provider(harness_env):
+    h = harness_env([_j("Pouvez-vous préciser lequel ?")])
+    h.svc.menu_data["categories"][0]["items"].append(
+        {"id": "poulet-alloco", "name": "Poulet braisé", "price": 6500, "available": True})
+    out = h.ask("Quel est le prix du poulet braisé ?")
+    assert out["message"] == "Pouvez-vous préciser lequel ?"
+    assert h.provider_calls == 1
+
+
+def test_unrecognized_message_uses_provider(harness_env):
+    h = harness_env([_j("Je peux vous aider à choisir.")])
+    out = h.ask("Aidez-moi à choisir un plat")
+    assert out["message"] == "Je peux vous aider à choisir."
+    assert h.provider_calls == 1
+
+
+def test_deterministic_cart_summary_keeps_contract_and_does_not_mutate(harness_env):
+    h = harness_env([])
+    out = h.ask("Peux-tu afficher le récapitulatif de mon panier ?")
+    assert out["message"] == "Votre panier est vide pour le moment."
+    assert set(("conversation_id", "message", "cart", "cart_id", "order", "products")).issubset(out)
+    assert out["order"] is None and out["products"] == []
+    assert h.provider_calls == 0
+    assert h.svc.add_calls == 0 and h.svc.create_order_calls == []
+    assert quota._model_calls.get("rest-1", []) == []
+
+
+def test_deterministic_address_uses_only_public_profile_fields(harness_env):
+    h = harness_env([])
+    h.svc.restaurant_data.update({"address": "12 rue des Jardins", "city": "Abidjan",
+                                  "email": "private@example.test"})
+    out = h.ask("Quelle est votre adresse ?")
+    assert "12 rue des Jardins, Abidjan" in out["message"]
+    assert "private@example.test" not in out["message"]
+    assert h.provider_calls == 0

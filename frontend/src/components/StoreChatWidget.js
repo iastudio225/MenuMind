@@ -21,14 +21,18 @@ export default function StoreChatWidget({
   onCartChange,
   ensureCart,
   onNewConversation,
+  onOrderCreated,
+  portalContainer,
   sessionEpoch = 0,
   // D1.52: embedded=true rend le panneau dans le flux de l'onglet Assistant
   // (pas de launcher ni de panneau overlay — le parent gère la navigation).
   embedded = false,
+  hideHeader = false,
 }) {
   const [open, setOpen] = useState(!embedded);
   const [messages, setMessages] = useState([]); // {role: "user"|"assistant", content, cart?}
   const [input, setInput] = useState("");
+  const inputRevisionRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null); // {text, retryText, status} | null
   // D1.54: carte produit cliquée → modale options/quantité (même parcours que le menu public).
@@ -58,6 +62,8 @@ export default function StoreChatWidget({
   const send = async (text, appendUser = true) => {
     const msg = (text || "").trim();
     if (!msg || sendingRef.current) return;
+    const inputRevision = inputRevisionRef.current;
+    const submittedCurrentInput = input.trim() === msg;
     sendingRef.current = true;
     setLoading(true);
     setError(null);
@@ -76,6 +82,10 @@ export default function StoreChatWidget({
         setError({ text: "Réponse inattendue de l'assistant. Réessayez.", retryText: msg, status: null });
         return;
       }
+      if (submittedCurrentInput && inputRevisionRef.current === inputRevision) {
+        inputRevisionRef.current += 1;
+        setInput("");
+      }
       onConversationChange?.(data.conversation_id);
       setMessages((m) => [...m, {
         role: "assistant",
@@ -85,6 +95,7 @@ export default function StoreChatWidget({
         products: Array.isArray(data.products) ? data.products : [],
       }]);
       onCartChange?.(data.cart, data.cart_id);
+      if (data.order?.reference) onOrderCreated?.(data.order);
     } catch (e) {
       // 429 (quota), 503 (provider) et erreurs réseau conservent panier et
       // conversation: l'utilisateur peut réessayer sans perte d'état.
@@ -164,27 +175,28 @@ export default function StoreChatWidget({
             ? "relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card"
             : "fixed inset-x-3 bottom-44 z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[24rem]"}
         >
-          {/* En-tête */}
-          <div className="flex items-center gap-3 border-b border-border bg-[#0F172A] px-4 py-3 text-white">
-            <span className="w-9 h-9 rounded-full bg-primary grid place-items-center">
-              <Bot className="w-5 h-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">Assistant de commande</p>
-              <p className="text-xs text-white/70">Répond instantanément</p>
+          {!hideHeader && (
+            <div className="flex items-center gap-3 border-b border-border bg-[#0F172A] px-4 py-3 text-white">
+              <span className="w-9 h-9 rounded-full bg-primary grid place-items-center">
+                <Bot className="w-5 h-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate">Assistant de commande</p>
+                <p className="text-xs text-white/70">Répond instantanément</p>
+              </div>
+              {!embedded && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Fermer l'assistant"
+                  onClick={() => setOpen(false)}
+                  className="h-8 w-8 text-white hover:bg-white/10 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
             </div>
-            {!embedded && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Fermer l'assistant"
-                onClick={() => setOpen(false)}
-                className="h-8 w-8 text-white hover:bg-white/10 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
+          )}
 
           {/* Messages */}
           <div
@@ -351,7 +363,10 @@ export default function StoreChatWidget({
             <Input
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                inputRevisionRef.current += 1;
+                setInput(e.target.value);
+              }}
               placeholder="Votre message…"
               aria-label="Votre message"
               disabled={loading}
@@ -374,7 +389,7 @@ export default function StoreChatWidget({
 
       {/* D1.54: options/quantité d'une carte ajoutée depuis la conversation */}
       {itemModal && (
-        <ItemOptionModal item={itemModal} onClose={() => setItemModal(null)} onAdd={addFromCard} />
+        <ItemOptionModal item={itemModal} onClose={() => setItemModal(null)} onAdd={addFromCard} portalContainer={portalContainer} />
       )}
     </>
   );

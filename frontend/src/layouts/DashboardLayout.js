@@ -10,6 +10,8 @@ import { useAuth } from "@/context/AuthContext";
 import { ROLE_LABELS } from "@/lib/format";
 import api from "@/lib/api";
 
+export const DashboardRestaurantContext = React.createContext(null);
+
 const NAV = [
   { to: "/dashboard", end: true, label: "Vue d'ensemble", icon: LayoutDashboard, testid: "nav-overview" },
   { to: "/dashboard/orders", label: "Commandes", icon: ShoppingBag, testid: "nav-orders" },
@@ -29,7 +31,9 @@ export default function DashboardLayout() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    api.get("/restaurants/me").then(({ data }) => setRestaurant(data)).catch(() => {});
+    let active = true;
+    api.get("/restaurants/me").then(({ data }) => { if (active) setRestaurant(data); }).catch(() => {});
+    return () => { active = false; };
   }, []);
 
   const doLogout = async () => {
@@ -79,6 +83,7 @@ export default function DashboardLayout() {
   );
 
   return (
+    <DashboardRestaurantContext.Provider value={restaurant}>
     <div className="min-h-screen bg-background flex">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 flex-col bg-card border-r border-border fixed inset-y-0">
@@ -108,5 +113,6 @@ export default function DashboardLayout() {
         </main>
       </div>
     </div>
+    </DashboardRestaurantContext.Provider>
   );
 }

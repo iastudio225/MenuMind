@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import {
   ShoppingBag, TrendingUp, Clock, ChefHat, Wallet, UtensilsCrossed,
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { formatFCFA } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
+import { DashboardRestaurantContext } from "@/layouts/DashboardLayout";
 
 function StatCard({ icon: Icon, label, value, hint, tone = "neutral", testid }) {
   const tones = {
@@ -30,11 +31,10 @@ function StatCard({ icon: Icon, label, value, hint, tone = "neutral", testid }) 
 export default function Overview() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
-  const [restaurant, setRestaurant] = useState(null);
+  const restaurant = useContext(DashboardRestaurantContext);
 
   useEffect(() => {
     api.get("/dashboard/overview").then(({ data }) => setStats(data)).catch(() => setStats({}));
-    api.get("/restaurants/me").then(({ data }) => setRestaurant(data)).catch(() => {});
   }, []);
 
   if (!stats) {
@@ -92,10 +92,9 @@ export default function Overview() {
         </div>
         <div className="bg-[#0F172A] text-white rounded-2xl p-6 relative overflow-hidden">
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary/30 blur-3xl" />
-          <h3 className="font-semibold mb-2 flex items-center gap-2 relative z-10"><Sparkles className="w-4 h-4 text-primary" /> Prochaine étape</h3>
+          <h3 className="font-semibold mb-2 flex items-center gap-2 relative z-10"><Sparkles className="w-4 h-4 text-primary" /> Votre restaurant, prêt à commander</h3>
           <p className="text-sm text-white/70 relative z-10">
-            La prise de commande par agent IA et la gestion du menu arrivent dans les prochaines phases.
-            Votre fondation multi-tenant est prête 🚀
+            Gérez votre menu, recevez les commandes avec l’agent IA et suivez votre activité depuis ce tableau de bord.
           </p>
         </div>
       </div>

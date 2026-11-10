@@ -22,7 +22,7 @@ const genKey = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now(
 // testids et protections Idempotency-Key strictement inchangés — voir D1.51
 // pour la purge (onCartInvalid) sur 404/409 et la conservation en cas d'erreur
 // réseau.
-export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones, onChangeQty, onRemove, onConfirmed, onCartInvalid }) {
+export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones, onChangeQty, onRemove, onConfirmed, onCartInvalid, portalContainer }) {
   const [step, setStep] = useState("cart"); // cart | info | recap
   const [orderType, setOrderType] = useState("DELIVERY");
   const [zoneId, setZoneId] = useState("");
@@ -61,7 +61,12 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="checkout-dialog">
+      <DialogContent
+        portalContainer={portalContainer}
+        overlayClassName={portalContainer ? "experience-inline-dialog-overlay" : undefined}
+        className={`max-h-[90vh] overflow-y-auto${portalContainer ? " experience-inline-dialog-content" : ""}`}
+        data-testid="checkout-dialog"
+      >
         <DialogHeader><DialogTitle>Votre commande</DialogTitle>
           <DialogDescription>{step === "cart" ? "Vérifiez votre panier" : step === "info" ? "Vos informations" : "Récapitulatif"}</DialogDescription></DialogHeader>
 
