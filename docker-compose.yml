@@ -27,6 +27,10 @@ services:
       AI_MODEL: ${AI_MODEL:-google/gemini-2.5-flash}
       BYTEZ_API_KEY: ${BYTEZ_API_KEY:-}
       BYTEZ_PROVIDER_KEY: ${BYTEZ_PROVIDER_KEY:-}
+      # Orchestrateur n8n (optionnel) — SMS/email/CRM via webhooks sortants
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
+      WEBHOOK_TIMEOUT_SECONDS: ${WEBHOOK_TIMEOUT_SECONDS:-5}
     restart: unless-stopped
     healthcheck:
       # python:slim n'a ni curl ni wget — on passe par urllib (sort non-0 si status != 2xx)

@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import {
   Check, ChefHat, ChevronRight, CircleAlert, Clock3,
-  MessageCircle, Plus, ShoppingBag, UtensilsCrossed,
+  MessageCircle, Plus, ShoppingBag, Truck, UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "sonner";
 import StoreChatWidget from "@/components/StoreChatWidget";
@@ -12,6 +12,7 @@ import CartLine from "@/components/store/CartLine";
 import CheckoutDialog from "@/components/store/CheckoutDialog";
 import { Button } from "@/components/ui/button";
 import { getVisibleExperienceCategories } from "@/lib/experienceMenu";
+import { secteurConfig } from "@/lib/secteurs";
 import { formatApiErrorDetail, formatFCFA } from "@/lib/format";
 import "@/pages/ExperiencePage.css";
 
@@ -198,13 +199,13 @@ export default function ExperiencePage() {
     }
   };
 
-  const addToCart = async (item, optionIds, quantity) => {
+  const addToCart = async (item, optionIds, quantity, booking) => {
     let id = null;
     try {
       id = await ensureCart();
-      const { data } = await axios.post(`${API}/public/cart/${encodeURIComponent(id)}/items`, {
-        item_id: item.id, quantity, option_ids: optionIds || [],
-      });
+      const payload = { item_id: item.id, quantity, option_ids: optionIds || [] };
+      if (booking) payload.booking = booking;
+      const { data } = await axios.post(`${API}/public/cart/${encodeURIComponent(id)}/items`, payload);
       applyCart(data, id);
       setSelectedItem(null);
       toast.success(`${item.name} ajouté au panier`);
@@ -263,13 +264,16 @@ export default function ExperiencePage() {
   const visibleCategories = getVisibleExperienceCategories(menu?.categories);
   const allItems = visibleCategories.flatMap((category) => category.items);
   const featuredItems = allItems.filter((item) => item.available).slice(0, 3);
+  const sector = secteurConfig(restaurant?.secteur);
+  const CatalogueIcon = sector.value === "logistique" ? Truck : sector.value === "e-commerce" ? ShoppingBag : UtensilsCrossed;
+  const catalogueTitle = sector.value === "restaurant" ? "Le menu" : "Le catalogue";
 
-  if (loading) return <main className="experience-state" style={theme}><span className="experience-spinner" />Chargement du restaurant…</main>;
+  if (loading) return <main className="experience-state" style={theme}><span className="experience-spinner" />Chargement de l'établissement…</main>;
   if (loadError || !restaurant || !menu) return (
     <main className="experience-state" style={theme}>
       <CircleAlert aria-hidden="true" />
-      <h1>Restaurant indisponible</h1>
-      <p>{loadError || "Impossible de charger ce restaurant."}</p>
+      <h1>Établissement indisponible</h1>
+      <p>{loadError || "Impossible de charger cet établissement."}</p>
     </main>
   );
 
@@ -298,12 +302,12 @@ export default function ExperiencePage() {
               <section className="experience-home" aria-labelledby="experience-welcome-title">
                 <div className="experience-welcome-card">
                   <span className="experience-welcome-icon"><UtensilsCrossed aria-hidden="true" /></span>
-                  <p className="experience-eyebrow">BIENVENUE CHEZ</p>
+                  <p className="experience-eyebrow">BIENVENUE</p>
                   <h2 id="experience-welcome-title">{restaurant.name}</h2>
-                  <p>{restaurant.welcome_message || "Découvrez notre menu et passez commande en quelques instants."}</p>
+                  <p>{restaurant.welcome_message || `Découvrez notre ${sector.catalogueLabel.toLowerCase()} et passez commande en quelques instants.`}</p>
                   <div className="experience-home-actions">
-                    <Button onClick={() => setActiveView("menu")} data-testid="experience-browse-menu">Découvrir le menu <ChevronRight aria-hidden="true" /></Button>
-                    <button className="experience-text-action" onClick={() => setActiveView("chat")}><MessageCircle aria-hidden="true" /> Commander en discutant</button>
+                    <Button onClick={() => setActiveView("menu")} data-testid="experience-browse-menu">{sector.value === "restaurant" ? "Découvrir le menu" : "Découvrir le catalogue"} <ChevronRight aria-hidden="true" /></Button>
+                    <button className="experience-text-action" onClick={() => setActiveView("chat")}><MessageCircle aria-hidden="true" /> {sector.value === "logistique" ? "Réserver en discutant" : "Commander en discutant"}</button>
                   </div>
                 </div>
                 {featuredItems.length > 0 && (
@@ -318,9 +322,9 @@ export default function ExperiencePage() {
             )}
 
             {activeView === "menu" && (
-              <section className="experience-menu" aria-label="Menu du restaurant">
-                <div className="experience-page-title"><p className="experience-eyebrow">À LA CARTE</p><h2>Le menu</h2><p>Choisissez vos plats, vous pourrez ajuster votre commande ensuite.</p></div>
-                {visibleCategories.length === 0 ? <EmptyState title="Le menu arrive bientôt" body="Aucun plat n’est disponible pour le moment." /> : visibleCategories.map((category) => (
+              <section className="experience-menu" aria-label="Catalogue de l'établissement">
+                <div className="experience-page-title"><p className="experience-eyebrow">À LA CARTE</p><h2>{catalogueTitle}</h2><p>Choisissez vos {sector.itemsPlural}, vous pourrez ajuster votre commande ensuite.</p></div>
+                {visibleCategories.length === 0 ? <EmptyState title="Le catalogue arrive bientôt" body={`Aucun ${sector.itemLabel.toLowerCase()} n’est disponible pour le moment.`} /> : visibleCategories.map((category) => (
                   <section className="experience-category" key={category.id}>
                     <h3>{category.name}</h3>
                     <div className="experience-menu-list">{(category.items || []).map((item) => <ProductCard key={item.id} item={item} onSelect={setSelectedItem} />)}</div>
@@ -334,6 +338,7 @@ export default function ExperiencePage() {
                   embedded
                   hideHeader
                   restaurantPublicId={publicId}
+                  secteur={sector.value}
                   welcomeMessage={restaurant.welcome_message || "Bonjour 👋 Que vous ferait plaisir ?"}
                   cartId={cartId}
                   conversationId={conversationId}
@@ -348,16 +353,16 @@ export default function ExperiencePage() {
             </section>
 
             {activeView === "cart" && (
-              <section className="experience-cart" aria-label="Votre panier">
-                <div className="experience-page-title"><p className="experience-eyebrow">VOTRE SÉLECTION</p><h2>Votre panier</h2></div>
+              <section className="experience-cart" aria-label={`Votre ${sector.cartLabel.toLowerCase()}`}>
+                <div className="experience-page-title"><p className="experience-eyebrow">VOTRE SÉLECTION</p><h2>Votre {sector.cartLabel.toLowerCase()}</h2></div>
                 {!cart?.items?.length ? (
-                  <EmptyState title="Votre panier est vide" body="Ajoutez quelques plats du menu ou demandez conseil à notre assistant." action={<><Button variant="outline" onClick={() => setActiveView("menu")}>Voir le menu</Button><Button onClick={() => setActiveView("chat")}>Parler à l’assistant</Button></>} />
+                  <EmptyState title={`Votre ${sector.cartLabel.toLowerCase()} est vide`} body="Ajoutez quelques articles ou demandez conseil à notre assistant." action={<><Button variant="outline" onClick={() => setActiveView("menu")}>Voir le catalogue</Button><Button onClick={() => setActiveView("chat")}>Parler à l’assistant</Button></>} />
                 ) : (
                   <>
                     <div className="experience-cart-lines">{cart.items.map((line) => <CartLine key={line.cart_item_id} line={line} onChangeQty={changeQuantity} onRemove={removeLine} testIdPrefix="experience-cart-line" />)}</div>
                     <div className="experience-cart-total"><span>Sous-total</span><strong>{formatFCFA(cart.subtotal)}</strong></div>
                     <p className="experience-cart-hint">Les frais de livraison seront calculés selon votre zone.</p>
-                    <Button className="experience-checkout-button" onClick={() => setCheckoutOpen(true)} data-testid="experience-checkout">Continuer vers la commande <ChevronRight aria-hidden="true" /></Button>
+                    <Button className="experience-checkout-button" onClick={() => setCheckoutOpen(true)} data-testid="experience-checkout">Continuer vers la {sector.orderNoun} <ChevronRight aria-hidden="true" /></Button>
                   </>
                 )}
               </section>
@@ -365,9 +370,9 @@ export default function ExperiencePage() {
           </div>
 
           <nav className="experience-nav" aria-label="Navigation de commande">
-            <NavButton active={activeView === "home" || activeView === "menu"} label="Menu" onClick={() => setActiveView("menu")}><UtensilsCrossed aria-hidden="true" /></NavButton>
+            <NavButton active={activeView === "home" || activeView === "menu"} label={sector.catalogueLabel} onClick={() => setActiveView("menu")}><CatalogueIcon aria-hidden="true" /></NavButton>
             <NavButton active={activeView === "chat"} label="Assistant" onClick={() => setActiveView("chat")}><MessageCircle aria-hidden="true" /></NavButton>
-            <NavButton active={activeView === "cart"} label="Panier" count={itemCount} onClick={() => setActiveView("cart")}><ShoppingBag aria-hidden="true" /></NavButton>
+            <NavButton active={activeView === "cart"} label={sector.cartLabel} count={itemCount} onClick={() => setActiveView("cart")}><ShoppingBag aria-hidden="true" /></NavButton>
           </nav>
           {order && <OrderConfirmation order={order} onContinue={() => { setOrder(null); setActiveView("menu"); }} />}
         </div>
@@ -375,6 +380,7 @@ export default function ExperiencePage() {
 
       {selectedItem && <ItemOptionModal item={selectedItem} onClose={() => setSelectedItem(null)} onAdd={addToCart} portalContainer={screenElement} />}
       {checkoutOpen && <CheckoutDialog open={checkoutOpen} onOpenChange={setCheckoutOpen} cart={cart} cartId={cartId} zones={zones} portalContainer={screenElement}
+        secteur={sector.value}
         onChangeQty={changeQuantity} onRemove={removeLine} onConfirmed={(createdOrder) => { setCheckoutOpen(false); finishOrder(createdOrder); }} onCartInvalid={clearSession} />}
     </main>
   );
@@ -385,7 +391,7 @@ function ProductCard({ item, onSelect }) {
     <article className="experience-product" data-testid={`experience-item-${item.id}`}>
       {item.image_url ? <img src={item.image_url} alt="" loading="lazy" /> : <div className="experience-product-placeholder"><UtensilsCrossed aria-hidden="true" /></div>}
       <div className="experience-product-info"><h3>{item.name}</h3>{item.description && <p>{item.description}</p>}{item.options?.length > 0 && <span className="experience-product-options">Personnalisable · {item.options.map((group) => group.name).join(", ")}</span>}<strong>{formatFCFA(item.price)}</strong>
-        {item.available ? <button className="experience-add" onClick={() => onSelect(item)} aria-label={`Choisir ${item.name}`} data-testid={`experience-add-${item.id}`}><Plus aria-hidden="true" /></button> : <span className="experience-unavailable">Indisponible</span>}
+        {item.available && item.in_stock !== false ? <button className="experience-add" onClick={() => onSelect(item)} aria-label={`Choisir ${item.name}`} data-testid={`experience-add-${item.id}`}><Plus aria-hidden="true" /></button> : <span className="experience-unavailable">{item.in_stock === false ? "Rupture" : "Indisponible"}</span>}
       </div>
     </article>
   );
@@ -405,11 +411,11 @@ function OrderConfirmation({ order, onContinue }) {
   const statusLabels = { PENDING: "En attente de prise en charge", CONFIRMED: "Confirmée", PREPARING: "En préparation", READY: "Prête", OUT_FOR_DELIVERY: "En livraison", COMPLETED: "Terminée" };
   return <div className="experience-confirmation-backdrop"><section className="experience-confirmation" role="status" aria-live="polite" data-testid="experience-order-confirmation">
     <span className="experience-confirmation-check"><Check aria-hidden="true" /></span><p className="experience-eyebrow">COMMANDE ENREGISTRÉE</p><h2>Merci pour votre commande !</h2>
-    <p className="experience-confirmation-copy">Votre restaurant a bien reçu votre demande.</p>
+    <p className="experience-confirmation-copy">Votre établissement a bien reçu votre demande.</p>
     <div className="experience-order-reference"><span>Numéro de commande</span><strong data-testid="experience-order-reference">{order.reference}</strong></div>
     <div className="experience-order-total"><span>Total</span><strong>{formatFCFA(order.total)}</strong></div>
     <div className="experience-order-status"><Clock3 aria-hidden="true" /><span>{statusLabels[order.status] || order.status}</span></div>
-    {order.tracking_token && <p className="experience-tracking-note">Conservez votre numéro de commande pour vos échanges avec le restaurant.</p>}
-    <Button className="experience-confirmation-button" onClick={onContinue}>Retour au restaurant</Button>
+    {order.tracking_token && <p className="experience-tracking-note">Conservez votre numéro de commande pour vos échanges avec l'établissement.</p>}
+    <Button className="experience-confirmation-button" onClick={onContinue}>Retour à l'établissement</Button>
   </section></div>;
 }

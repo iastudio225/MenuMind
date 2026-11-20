@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import { SECTEUR_OPTIONS, secteurConfig } from "@/lib/secteurs";
 import { useAuth } from "@/context/AuthContext";
 
 function Metric({ icon: Icon, label, value, testid }) {
@@ -168,7 +169,7 @@ export default function SuperAdmin() {
   const [plans, setPlans] = useState([]);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", owner_name: "", owner_email: "", owner_password: "", plan: "STARTER" });
+  const [form, setForm] = useState({ name: "", owner_name: "", owner_email: "", owner_password: "", plan: "STARTER", secteur: "restaurant" });
 
   const [detail, setDetail] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -182,6 +183,7 @@ export default function SuperAdmin() {
   const [pwTarget, setPwTarget] = useState(null); // {id, name, email}
   const [pwValue, setPwValue] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
+  const [filterSecteur, setFilterSecteur] = useState("all");
 
   const load = async () => {
     try {
@@ -197,6 +199,10 @@ export default function SuperAdmin() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const filteredRestaurants = filterSecteur === "all"
+    ? restaurants
+    : restaurants.filter((r) => (r.secteur || "restaurant") === filterSecteur);
 
   const toggleStatus = async (id, current) => {
     const status = current === "active" ? "suspended" : "active";
@@ -216,7 +222,7 @@ export default function SuperAdmin() {
       await api.post("/admin/restaurants", form);
       toast.success("Restaurant créé");
       setOpen(false);
-      setForm({ name: "", owner_name: "", owner_email: "", owner_password: "", plan: "STARTER" });
+      setForm({ name: "", owner_name: "", owner_email: "", owner_password: "", plan: "STARTER", secteur: "restaurant" });
       load();
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
@@ -240,7 +246,7 @@ export default function SuperAdmin() {
     setEditForm({
       name: r.name || "", description: r.description || "", phone: r.phone || "",
       whatsapp: r.whatsapp || "", email: r.email || "", address: r.address || "",
-      city: r.city || "", plan: r.plan || "STARTER",
+      city: r.city || "", plan: r.plan || "STARTER", secteur: r.secteur || "restaurant",
       plan_activated_at: r.plan_activated_at ? r.plan_activated_at.slice(0, 10) : "",
       plan_expires_at: r.plan_expires_at ? r.plan_expires_at.slice(0, 10) : "",
     });
@@ -331,19 +337,30 @@ export default function SuperAdmin() {
         <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
           <div>
             <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="admin-title">Supervision SaaS</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Pilotez l'ensemble des restaurants de la plateforme.</p>
+            <p className="text-muted-foreground mt-1 text-sm">Pilotez l'ensemble des établissements de la plateforme.</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="admin-create-restaurant-btn"><Plus className="w-4 h-4 mr-1" /> Nouveau restaurant</Button>
+              <Button data-testid="admin-create-restaurant-btn"><Plus className="w-4 h-4 mr-1" /> Nouvel établissement</Button>
             </DialogTrigger>
             <DialogContent data-testid="admin-create-dialog">
               <DialogHeader>
-                <DialogTitle>Créer un restaurant</DialogTitle>
+                <DialogTitle>Créer un établissement</DialogTitle>
                 <DialogDescription>Ajoutez un nouvel établissement et son compte propriétaire sur la plateforme.</DialogDescription>
               </DialogHeader>
               <form onSubmit={createRestaurant} className="space-y-4">
-                <div className="space-y-2"><Label>Nom du restaurant</Label><Input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} data-testid="admin-new-name" /></div>
+                <div className="space-y-2">
+                  <Label>Secteur d'activité</Label>
+                  <Select value={form.secteur} onValueChange={(v) => setForm((f) => ({ ...f, secteur: v }))}>
+                    <SelectTrigger data-testid="admin-new-secteur"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SECTEUR_OPTIONS.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label>{secteurConfig(form.secteur).businessLabel}</Label><Input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} data-testid="admin-new-name" /></div>
                 <div className="space-y-2"><Label>Nom du propriétaire</Label><Input required value={form.owner_name} onChange={(e) => setForm((f) => ({ ...f, owner_name: e.target.value }))} data-testid="admin-new-owner-name" /></div>
                 <div className="space-y-2"><Label>Email propriétaire</Label><Input type="email" required value={form.owner_email} onChange={(e) => setForm((f) => ({ ...f, owner_email: e.target.value }))} data-testid="admin-new-owner-email" /></div>
                 <div className="space-y-2"><Label>Mot de passe</Label><Input type="password" required minLength={6} value={form.owner_password} onChange={(e) => setForm((f) => ({ ...f, owner_password: e.target.value }))} data-testid="admin-new-owner-password" /></div>
@@ -386,18 +403,30 @@ export default function SuperAdmin() {
 
         <Tabs defaultValue="restaurants" className="mt-2">
           <TabsList>
-            <TabsTrigger value="restaurants" data-testid="admin-tab-restaurants">Restaurants</TabsTrigger>
+            <TabsTrigger value="restaurants" data-testid="admin-tab-restaurants">Établissements</TabsTrigger>
             <TabsTrigger value="plans" data-testid="admin-tab-plans">Plans & licences</TabsTrigger>
           </TabsList>
 
           <TabsContent value="restaurants">
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-border font-semibold">Restaurants ({restaurants.length})</div>
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+                <span className="font-semibold">Établissements ({filteredRestaurants.length})</span>
+                <Select value={filterSecteur} onValueChange={setFilterSecteur}>
+                  <SelectTrigger className="w-56" data-testid="admin-secteur-filter"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les secteurs</SelectItem>
+                    {SECTEUR_OPTIONS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" data-testid="admin-restaurants-table">
                   <thead className="bg-secondary/50 text-muted-foreground">
                     <tr>
-                      <th className="text-left font-medium px-5 py-3">Restaurant</th>
+                      <th className="text-left font-medium px-5 py-3">Établissement</th>
+                      <th className="text-left font-medium px-5 py-3">Secteur</th>
                       <th className="text-left font-medium px-5 py-3">Propriétaire</th>
                       <th className="text-left font-medium px-5 py-3">Licence</th>
                       <th className="text-left font-medium px-5 py-3">Statut</th>
@@ -405,11 +434,14 @@ export default function SuperAdmin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {restaurants.map((r, i) => (
+                    {filteredRestaurants.map((r, i) => (
                       <tr key={r.id} className="border-t border-border" data-testid={`admin-tenant-row-${i}`}>
                         <td className="px-5 py-3">
                           <p className="font-medium">{r.name}</p>
                           <p className="text-xs text-muted-foreground">{r.city || "—"} · {r.orders_count} cmd</p>
+                        </td>
+                        <td className="px-5 py-3">
+                          <Badge variant="outline" data-testid={`tenant-secteur-${i}`}>{secteurConfig(r.secteur).label}</Badge>
                         </td>
                         <td className="px-5 py-3 text-muted-foreground">{r.owner_email || "—"}</td>
                         <td className="px-5 py-3">
@@ -526,6 +558,7 @@ export default function SuperAdmin() {
           {detail && (
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
+                <div><p className="text-muted-foreground">Secteur</p><p>{secteurConfig(detail.secteur).label}</p></div>
                 <div><p className="text-muted-foreground">Ville</p><p>{detail.city || "—"}</p></div>
                 <div><p className="text-muted-foreground">Adresse</p><p>{detail.address || "—"}</p></div>
                 <div><p className="text-muted-foreground">Téléphone</p><p>{detail.phone || "—"}</p></div>
@@ -590,6 +623,17 @@ export default function SuperAdmin() {
                 onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} data-testid="edit-name" /></div>
               <div className="space-y-2"><Label>Description</Label><Input value={editForm.description}
                 onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} data-testid="edit-description" /></div>
+              <div className="space-y-2">
+                <Label>Secteur d'activité</Label>
+                <Select value={editForm.secteur} onValueChange={(v) => setEditForm((f) => ({ ...f, secteur: v }))}>
+                  <SelectTrigger data-testid="edit-secteur"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {SECTEUR_OPTIONS.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Ville</Label><Input value={editForm.city}
                   onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))} data-testid="edit-city" /></div>

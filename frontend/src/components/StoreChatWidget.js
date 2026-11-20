@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import ItemOptionModal from "@/components/store/ItemOptionModal";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const FALLBACK_WELCOME = "Bonjour 👋 Je suis l'assistant de commande. Comment puis-je vous aider ?";
+const FALLBACK_WELCOME = "Bonjour 👋 Je suis votre assistant. Comment puis-je vous aider ?";
 
 const ORDER_TYPE_LABELS = { DELIVERY: "Livraison", PICKUP: "À emporter" };
 
@@ -28,7 +29,9 @@ export default function StoreChatWidget({
   // (pas de launcher ni de panneau overlay — le parent gère la navigation).
   embedded = false,
   hideHeader = false,
+  secteur = "restaurant",
 }) {
+  const sector = secteurConfig(secteur);
   const [open, setOpen] = useState(!embedded);
   const [messages, setMessages] = useState([]); // {role: "user"|"assistant", content, cart?}
   const [input, setInput] = useState("");
@@ -118,20 +121,22 @@ export default function StoreChatWidget({
   // D1.54: ajout direct depuis une carte de la conversation — mêmes règles que
   // le menu public (panier créé paresseusement, serveur seul juge des prix,
   // options et disponibilité).
-  const addFromCard = async (item, optionIds, qty) => {
+  const addFromCard = async (item, optionIds, qty, booking) => {
     if (addingRef.current) return;
     addingRef.current = true;
     try {
       let cid = cartId;
       if (ensureCart) cid = await ensureCart();
-      const { data } = await axios.post(`${API}/public/cart/${cid}/items`, {
+      const payload = {
         item_id: item.id,
         quantity: qty,
         option_ids: optionIds,
-      });
+      };
+      if (booking) payload.booking = booking;
+      const { data } = await axios.post(`${API}/public/cart/${cid}/items`, payload);
       onCartChange?.(data, cid);
       setItemModal(null);
-      toast.success(`${item.name} ajouté au panier`);
+      toast.success(`${item.name} ajouté au ${sector.cartLabel.toLowerCase()}`);
     } catch (e) {
       toast.error(formatApiErrorDetail(e.response?.data?.detail) || "Impossible d'ajouter ce produit. Réessayez.");
     } finally {
@@ -248,7 +253,7 @@ export default function StoreChatWidget({
                               ) : null}
                               <p className="mt-0.5 font-mono text-xs font-semibold">{formatFCFA(p.price)}</p>
                             </div>
-                            {p.available ? (
+                            {p.available && p.in_stock !== false ? (
                               <Button
                                 size="icon"
                                 variant="outline"
@@ -264,7 +269,7 @@ export default function StoreChatWidget({
                                 className="shrink-0 text-[11px] font-medium text-red-500"
                                 data-testid={`chat-product-unavailable-${p.id}`}
                               >
-                                Indisponible
+                                {p.in_stock === false ? "Rupture" : "Indisponible"}
                               </span>
                             )}
                           </div>
@@ -278,7 +283,7 @@ export default function StoreChatWidget({
                       data-testid="chat-cart-card"
                     >
                       <p className="flex items-center gap-1.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                        <ShoppingCart className="w-3.5 h-3.5" /> Votre panier
+                        <ShoppingCart className="w-3.5 h-3.5" /> Votre {sector.cartLabel.toLowerCase()}
                       </p>
                       <div className="mt-2 space-y-1">
                         {m.cart.items.map((line) => (

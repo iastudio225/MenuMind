@@ -3,17 +3,22 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { formatApiErrorDetail } from "@/lib/format";
+import { SECTEUR_OPTIONS, secteurConfig } from "@/lib/secteurs";
 import AuthShell from "@/components/AuthShell";
 
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", restaurant_name: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({ name: "", restaurant_name: "", email: "", phone: "", password: "", secteur: "restaurant" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const secteur = secteurConfig(form.secteur);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -34,14 +39,27 @@ export default function Register() {
   return (
     <AuthShell
       title="Créer votre compte"
-      subtitle="Lancez votre réceptionniste IA en quelques minutes."
+      subtitle="Lancez votre assistant IA en quelques minutes."
       footer={<>Déjà inscrit ? <Link to="/login" className="text-primary font-medium" data-testid="go-login-link">Se connecter</Link></>}
     >
       <form onSubmit={submit} className="space-y-4" data-testid="register-form">
         <div className="space-y-2">
-          <Label htmlFor="restaurant_name">Nom du restaurant</Label>
+          <Label htmlFor="secteur">Type d'activité</Label>
+          <Select value={form.secteur} onValueChange={(value) => setForm((f) => ({ ...f, secteur: value }))}>
+            <SelectTrigger id="secteur" data-testid="register-secteur-select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SECTEUR_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="restaurant_name">{secteur.businessLabel}</Label>
           <Input id="restaurant_name" required value={form.restaurant_name} onChange={set("restaurant_name")}
-            placeholder="Chez Awa" data-testid="register-restaurant-input" />
+            placeholder={secteur.businessPlaceholder} data-testid="register-restaurant-input" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="name">Votre nom</Label>
@@ -51,7 +69,7 @@ export default function Register() {
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" required value={form.email} onChange={set("email")}
-              placeholder="vous@restaurant.ci" data-testid="register-email-input" />
+              placeholder="vous@exemple.ci" data-testid="register-email-input" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Téléphone</Label>
@@ -65,7 +83,7 @@ export default function Register() {
         </div>
         {error && <p className="text-sm text-destructive" data-testid="register-error">{error}</p>}
         <Button type="submit" className="w-full h-11" disabled={loading} data-testid="register-submit-button">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Créer mon compte restaurant"}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : `Créer mon compte ${secteur.businessNoun}`}
         </Button>
       </form>
     </AuthShell>

@@ -5,7 +5,8 @@ from fastapi import APIRouter, Response, Request, HTTPException, BackgroundTasks
 
 from database import db
 from models import (RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody,
-                    RESTAURANT_OWNER, serialize, now_iso)
+                    RESTAURANT_OWNER, serialize, now_iso, normalize_secteur,
+                    SECTEUR_LOGISTIQUE, SECTEUR_ECOMMERCE)
 from auth import (hash_password, verify_password, set_auth_cookies, clear_auth_cookies,
                   get_current_user, create_access_token, send_password_reset_email,
                   sha256_hex, get_jwt_secret)
@@ -25,6 +26,15 @@ def default_opening_hours():
     return {d: {"open": "11:00", "close": "22:00", "closed": False} for d in days}
 
 
+def default_widget_message(name: str, secteur: str) -> str:
+    """Message d'accueil public adapté au secteur (rétro-compatible restaurant)."""
+    if secteur == SECTEUR_LOGISTIQUE:
+        return f"Bonjour 👋 Bienvenue chez {name} ! Besoin d'une course ou d'une livraison ?"
+    if secteur == SECTEUR_ECOMMERCE:
+        return f"Bonjour 👋 Bienvenue sur la boutique {name} ! Que souhaitez-vous acheter ?"
+    return f"Bonjour 👋 Bienvenue chez {name} ! Que souhaitez-vous commander ?"
+
+
 def _user_public(user_doc: dict) -> dict:
     return serialize(user_doc, drop=["password_hash"])
 
@@ -36,14 +46,16 @@ async def register(body: RegisterBody, response: Response):
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     ts = now_iso()
     public_id = "rest_" + secrets.token_hex(6)
+    secteur = normalize_secteur(body.secteur)
     restaurant_doc = {
         "public_id": public_id, "name": body.restaurant_name, "description": "", "logo": "",
         "phone": body.phone or "", "whatsapp": "", "email": email,
         "address": "", "city": "", "country": "Côte d'Ivoire", "currency": "FCFA",
         "timezone": "Africa/Abidjan", "opening_hours": default_opening_hours(),
         "status": "active", "plan": "STARTER", "onboarding_completed": False,
+        "secteur": secteur,
         "widget": {"primary_color": "#E05638", "secondary_color": "#0F172A",
-                   "welcome_message": f"Bonjour 👋 Bienvenue chez {body.restaurant_name} !", "logo": ""},
+                   "welcome_message": default_widget_message(body.restaurant_name, secteur), "logo": ""},
         "created_at": ts, "updated_at": ts,
     }
     res = await db.restaurants.insert_one(restaurant_doc)

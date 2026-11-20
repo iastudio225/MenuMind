@@ -116,8 +116,9 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
                 # Unknown AND foreign ids share the exact _resolve_item message:
                 # a wrong id is never an existence oracle across tenants.
                 raise HTTPException(status_code=400, detail="Article introuvable pour ce restaurant")
-        products = [by_id[i] for i in item_ids if by_id[i].get("available", True)]
-        unavailable = [by_id[i]["name"] for i in item_ids if not by_id[i].get("available", True)]
+        products = [by_id[i] for i in item_ids if by_id[i].get("available", True) and by_id[i].get("in_stock", True)]
+        unavailable = [by_id[i]["name"] for i in item_ids
+                       if not (by_id[i].get("available", True) and by_id[i].get("in_stock", True))]
         hint = "Présente les cartes renvoyées telles quelles."
         if unavailable:
             hint = ("Présente les cartes renvoyées et explique que "
@@ -149,6 +150,11 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
         item_id = args["item_id"]
         quantity = int(args.get("quantity", 1))
         option_ids = args.get("option_ids") or []
+        booking = {}
+        if args.get("distance_km") is not None:
+            booking["distance_km"] = float(args["distance_km"])
+        if args.get("weight_kg") is not None:
+            booking["weight_kg"] = float(args["weight_kg"])
         if quantity < 1:
             raise HTTPException(status_code=400, detail="Quantité invalide")
         # D1.46: the same article with the same options already on a line must
@@ -157,14 +163,23 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
         existing = next(
             (i for i in cart.get("items", [])
              if i.get("item_id") == item_id
-             and sorted(i.get("option_ids") or []) == sorted(option_ids)),
+             and sorted(i.get("option_ids") or []) == sorted(option_ids)
+             and (i.get("booking") or {}) == booking),
             None)
         if existing is not None:
-            await svc.update_cart_item(db, rid, cart, existing["cart_item_id"],
-                                       quantity=int(existing.get("quantity", 1)) + quantity,
-                                       option_ids=None)
+            if booking:
+                await svc.update_cart_item(db, rid, cart, existing["cart_item_id"],
+                                           quantity=int(existing.get("quantity", 1)) + quantity,
+                                           option_ids=None, booking=booking)
+            else:
+                await svc.update_cart_item(db, rid, cart, existing["cart_item_id"],
+                                           quantity=int(existing.get("quantity", 1)) + quantity,
+                                           option_ids=None)
         else:
-            await svc.add_to_cart(db, rid, cart, item_id, quantity, option_ids)
+            if booking:
+                await svc.add_to_cart(db, rid, cart, item_id, quantity, option_ids, booking)
+            else:
+                await svc.add_to_cart(db, rid, cart, item_id, quantity, option_ids)
         return await _cart_view(db, rid, conversation), None
 
     if tool == "update_cart_item":
@@ -186,10 +201,13 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
         order_type = args.get("order_type")
         if order_type not in ("DELIVERY", "PICKUP"):
             raise HTTPException(status_code=400, detail="Type invalide (DELIVERY ou PICKUP)")
-        draft = {"order_type": order_type, "delivery_zone_id": None, "address": ""}
+        draft = {"order_type": order_type, "delivery_zone_id": None, "address": "",
+                 "pickup_address": "", "dropoff_address": ""}
         if order_type == "DELIVERY":
             draft["delivery_zone_id"] = args.get("delivery_zone_id")
             draft["address"] = args.get("address", "") or conversation.get("draft", {}).get("address", "")
+            draft["pickup_address"] = args.get("pickup_address", "") or conversation.get("draft", {}).get("pickup_address", "")
+            draft["dropoff_address"] = args.get("dropoff_address", "") or draft["address"] or conversation.get("draft", {}).get("dropoff_address", "")
             # Validate zone immediately (raises if unknown/inactive)
             fee = await svc.calculate_delivery_fee(db, rid, "DELIVERY", draft["delivery_zone_id"])
             draft["delivery_fee"] = fee
@@ -304,7 +322,9 @@ async def _create_order(db, rid, conversation, cart, last_user_message):
     if not validation["valid"]:
         raise HTTPException(status_code=409, detail=validation["issues"][0] if validation["issues"] else "Panier invalide")
 
-    customer_data = {**customer, "address": draft.get("address", "")}
+    customer_data = {**customer, "address": draft.get("address", ""),
+                     "pickup_address": draft.get("pickup_address", ""),
+                     "dropoff_address": draft.get("dropoff_address", "")}
     idem = f"conv:{conversation['conversation_id']}:{cart['cart_id']}"
     order = await svc.create_order(
         db, rid, cart, customer_data, order_type,

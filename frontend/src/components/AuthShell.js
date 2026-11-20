@@ -14,10 +14,10 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         </Link>
         <div className="relative z-10 max-w-md">
           <h2 className="font-heading text-3xl font-bold leading-tight">
-            Votre réceptionniste IA qui prend vos commandes 24h/24.
+            Votre assistant IA qui prend vos commandes 24h/24.
           </h2>
           <p className="mt-4 text-white/70">
-            Rejoignez les restaurants d'Abidjan qui automatisent leur prise de commande avec MenuMind.
+            Rejoignez les établissements d'Abidjan qui automatisent leur prise de commande avec MenuMind.
           </p>
         </div>
         <p className="relative z-10 text-sm text-white/40">© {new Date().getFullYear()} MenuMind — Côte d'Ivoire</p>

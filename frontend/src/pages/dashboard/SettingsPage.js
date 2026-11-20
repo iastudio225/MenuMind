@@ -23,11 +23,13 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get("/restaurants/me").then(({ data }) => setData(data)).catch(() => {});
+    api.get("/restaurants/me").then(({ data }) => setData({ ...data, notifications: data.notifications || {} })).catch(() => {});
   }, []);
 
   const set = (k) => (e) => setData((d) => ({ ...d, [k]: e.target.value }));
   const setWidget = (k) => (e) => setData((d) => ({ ...d, widget: { ...d.widget, [k]: e.target.value } }));
+  const setNotification = (k) => (e) =>
+    setData((d) => ({ ...d, notifications: { ...(d.notifications || {}), [k]: e.target.value } }));
   const setHour = (day, field, value) =>
     setData((d) => ({ ...d, opening_hours: { ...d.opening_hours, [day]: { ...d.opening_hours[day], [field]: value } } }));
 
@@ -78,8 +80,8 @@ export default function SettingsPage() {
 
     try {
       await navigator.share({
-        title: `Chatbot de ${data.name || "votre restaurant"}`,
-        text: "Découvrez le menu et commandez avec notre assistant.",
+        title: `Chatbot de ${data.name || "votre établissement"}`,
+        text: "Découvrez notre catalogue et commandez avec notre assistant.",
         url: chatbotUrl,
       });
       toast.success("Lien partagé");
@@ -88,6 +90,15 @@ export default function SettingsPage() {
     }
   };
 
+  const testWebhook = async () => {
+    try {
+      const { data: res } = await api.post("/notifications/test");
+      if (res.sent) toast.success("Webhook reçu par n8n");
+      else toast.error(`Échec de l'envoi (${res.status || res.reason || "inconnu"})`);
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    }
+  };
   if (!data) return <div className="grid place-items-center py-20"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
 
   return (
@@ -95,10 +106,11 @@ export default function SettingsPage() {
       <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight mb-6" data-testid="settings-title">Paramètres</h1>
       <Tabs defaultValue="restaurant">
         <TabsList data-testid="settings-tabs">
-          <TabsTrigger value="restaurant" data-testid="tab-restaurant">Restaurant</TabsTrigger>
+          <TabsTrigger value="restaurant" data-testid="tab-restaurant">Établissement</TabsTrigger>
           <TabsTrigger value="hours" data-testid="tab-hours">Horaires</TabsTrigger>
           <TabsTrigger value="widget" data-testid="tab-widget">Widget</TabsTrigger>
           <TabsTrigger value="chatbot" data-testid="tab-chatbot">Chatbot</TabsTrigger>
+          <TabsTrigger value="notifications" data-testid="tab-notifications">Notifications</TabsTrigger>
         </TabsList>
 
         <TabsContent value="restaurant" className="mt-6">
@@ -180,7 +192,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <h2 className="font-heading text-xl font-semibold">Votre chatbot</h2>
               <p className="text-sm text-muted-foreground">
-                Partagez ce lien avec vos clients pour leur permettre de découvrir votre menu et de commander directement avec votre assistant.
+                Partagez ce lien avec vos clients pour leur permettre de découvrir votre catalogue et de commander directement avec votre assistant.
               </p>
             </div>
             <div className="space-y-2">
@@ -199,6 +211,39 @@ export default function SettingsPage() {
               <Button variant="outline" onClick={shareChatbotLink} disabled={!chatbotUrl} data-testid="share-chatbot-link">
                 <Share2 className="w-4 h-4" /> Partager
               </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="mt-6">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="space-y-2">
+              <h2 className="font-heading text-xl font-semibold">Orchestrateur n8n</h2>
+              <p className="text-sm text-muted-foreground">
+                Recevez les événements de commande par webhook pour déclencher SMS, emails, agenda ou CRM.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="webhook-url">URL du webhook n8n</Label>
+              <Input id="webhook-url" value={data.notifications?.webhook_url || ""} onChange={setNotification("webhook_url")}
+                placeholder="https://n8n.exemple.com/webhook/menumind" data-testid="webhook-url-input" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="webhook-secret">Secret de signature (optionnel)</Label>
+              <Input id="webhook-secret" type="password" value={data.notifications?.webhook_secret || ""} onChange={setNotification("webhook_secret")}
+                placeholder="HMAC-SHA256" data-testid="webhook-secret-input" />
+              <p className="text-xs text-muted-foreground">Envoyé via l'en-tête X-MenuMind-Signature (sha256=…).</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => save(["notifications"])} disabled={saving} data-testid="save-notifications-button">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1" /> Enregistrer</>}
+              </Button>
+              <Button variant="outline" onClick={testWebhook} data-testid="test-webhook-button">
+                <ExternalLink className="w-4 h-4 mr-1" /> Tester le webhook
+              </Button>
+            </div>
+            <div className="rounded-lg bg-secondary/50 p-3 text-xs text-muted-foreground">
+              Événements : <code>order.created</code>, <code>order.status_changed</code>, <code>order.cancelled</code>, <code>test</code>.
             </div>
           </div>
         </TabsContent>

@@ -6,9 +6,9 @@ from bson import ObjectId
 from database import db
 from models import (AdminRestaurantCreate, AdminRestaurantUpdate, RestaurantStatusUpdate,
                     PlanCreate, PlanUpdate, UserPasswordUpdate, serialize, now_iso,
-                    SUPER_ADMIN, RESTAURANT_OWNER)
+                    SUPER_ADMIN, RESTAURANT_OWNER, normalize_secteur)
 from auth import require_roles, hash_password
-from routers.auth_router import default_opening_hours
+from routers.auth_router import default_opening_hours, default_widget_message
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -138,13 +138,15 @@ async def create_restaurant(body: AdminRestaurantCreate, user: dict = Depends(re
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     ts = now_iso()
     public_id = "rest_" + secrets.token_hex(6)
+    secteur = normalize_secteur(body.secteur)
     rdoc = {
         "public_id": public_id, "name": body.name, "description": "", "logo": "", "phone": "",
         "whatsapp": "", "email": email, "address": "", "city": "", "country": "Côte d'Ivoire",
         "currency": "FCFA", "timezone": "Africa/Abidjan", "opening_hours": default_opening_hours(),
         "status": "active", "plan": body.plan or "STARTER", "onboarding_completed": False,
+        "secteur": secteur,
         "widget": {"primary_color": "#E05638", "secondary_color": "#0F172A",
-                   "welcome_message": f"Bonjour 👋 Bienvenue chez {body.name} !", "logo": ""},
+                   "welcome_message": default_widget_message(body.name, secteur), "logo": ""},
         "created_at": ts, "updated_at": ts,
     }
     res = await db.restaurants.insert_one(rdoc)

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatFCFA } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import CartLine from "@/components/store/CartLine";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -22,11 +23,12 @@ const genKey = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now(
 // testids et protections Idempotency-Key strictement inchangés — voir D1.51
 // pour la purge (onCartInvalid) sur 404/409 et la conservation en cas d'erreur
 // réseau.
-export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones, onChangeQty, onRemove, onConfirmed, onCartInvalid, portalContainer }) {
+export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones, onChangeQty, onRemove, onConfirmed, onCartInvalid, portalContainer, secteur = "restaurant" }) {
+  const sector = secteurConfig(secteur);
   const [step, setStep] = useState("cart"); // cart | info | recap
   const [orderType, setOrderType] = useState("DELIVERY");
   const [zoneId, setZoneId] = useState("");
-  const [form, setForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "", customer_note: "" });
+  const [form, setForm] = useState({ first_name: "", last_name: "", phone: "", email: "", address: "", pickup_address: "", dropoff_address: "", customer_note: "" });
   const [placing, setPlacing] = useState(false);
   const [idemKey] = useState(genKey());
 
@@ -39,13 +41,26 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
 
   const place = async () => {
     if (!form.first_name || !form.phone) { toast.error("Prénom et téléphone requis"); setStep("info"); return; }
-    if (orderType === "DELIVERY" && (!zoneId || !form.address)) { toast.error("Zone et adresse requises"); setStep("info"); return; }
+    if (sector.value === "logistique") {
+      if (!form.pickup_address || !form.dropoff_address) {
+        toast.error("Adresses de ramassage et de livraison requises"); setStep("info"); return;
+      }
+    }
+    if (orderType === "DELIVERY" && (!zoneId || (sector.value !== "logistique" && !form.address))) {
+      toast.error("Zone et adresse requises"); setStep("info"); return;
+    }
     setPlacing(true);
     try {
+      const isLogistique = sector.value === "logistique";
       const { data } = await axios.post(`${API}/public/orders`, {
         cart_id: cartId, order_type: orderType, delivery_zone_id: orderType === "DELIVERY" ? zoneId : null,
         customer_note: form.customer_note,
-        customer: { first_name: form.first_name, last_name: form.last_name, phone: form.phone, email: form.email, address: form.address },
+        customer: {
+          first_name: form.first_name, last_name: form.last_name, phone: form.phone, email: form.email,
+          address: isLogistique ? form.dropoff_address : form.address,
+          pickup_address: isLogistique ? form.pickup_address : "",
+          dropoff_address: isLogistique ? form.dropoff_address : "",
+        },
       }, { headers: { "Idempotency-Key": idemKey } });
       onConfirmed(data);
     } catch (e) {
@@ -67,8 +82,8 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
         className={`max-h-[90vh] overflow-y-auto${portalContainer ? " experience-inline-dialog-content" : ""}`}
         data-testid="checkout-dialog"
       >
-        <DialogHeader><DialogTitle>Votre commande</DialogTitle>
-          <DialogDescription>{step === "cart" ? "Vérifiez votre panier" : step === "info" ? "Vos informations" : "Récapitulatif"}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Votre {sector.orderNoun}</DialogTitle>
+          <DialogDescription>{step === "cart" ? `Vérifiez votre ${sector.cartLabel.toLowerCase()}` : step === "info" ? "Vos informations" : "Récapitulatif"}</DialogDescription></DialogHeader>
 
         {step === "cart" && (
           <div className="space-y-3">
@@ -83,7 +98,7 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
         {step === "info" && (
           <div className="space-y-4">
             <div className="flex gap-2">
-              {[["DELIVERY", "Livraison"], ["PICKUP", "À emporter"]].map(([v, l]) => (
+              {[["DELIVERY", "Livraison"], ["PICKUP", sector.pickupLabel]].map(([v, l]) => (
                 <button key={v} onClick={() => setOrderType(v)} data-testid={`order-type-${v}`}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium border ${orderType === v ? "border-primary bg-primary/5 text-primary" : "border-border"}`}>{l}</button>
               ))}
@@ -101,7 +116,14 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
                     <SelectContent>{zones.map((z) => <SelectItem key={z.id} value={z.id}>{z.name} — {formatFCFA(z.fee)}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1"><Label>Adresse *</Label><Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} data-testid="checkout-address" /></div>
+                {sector.value === "logistique" ? (
+                  <>
+                    <div className="space-y-1"><Label>Adresse de ramassage *</Label><Input value={form.pickup_address} onChange={(e) => setForm((f) => ({ ...f, pickup_address: e.target.value }))} placeholder="Point de départ" data-testid="checkout-pickup-address" /></div>
+                    <div className="space-y-1"><Label>Adresse de livraison *</Label><Input value={form.dropoff_address} onChange={(e) => setForm((f) => ({ ...f, dropoff_address: e.target.value }))} placeholder="Point d'arrivée" data-testid="checkout-dropoff-address" /></div>
+                  </>
+                ) : (
+                  <div className="space-y-1"><Label>Adresse *</Label><Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} data-testid="checkout-address" /></div>
+                )}
               </>
             )}
             <div className="space-y-1"><Label>Note (optionnel)</Label><Textarea rows={2} value={form.customer_note} onChange={(e) => setForm((f) => ({ ...f, customer_note: e.target.value }))} data-testid="checkout-note" /></div>
@@ -117,7 +139,13 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
             <div className="rounded-xl bg-secondary/50 p-3 text-sm">
               <p className="font-semibold">{form.first_name} {form.last_name}</p>
               <p className="text-muted-foreground">{form.phone}</p>
-              <p className="text-muted-foreground">{orderType === "DELIVERY" ? `Livraison — ${form.address}` : "À emporter"}</p>
+              <p className="text-muted-foreground">
+                {orderType === "DELIVERY"
+                  ? (sector.value === "logistique"
+                      ? `Ramassage : ${form.pickup_address} — Livraison : ${form.dropoff_address}`
+                      : `Livraison — ${form.address}`)
+                  : sector.pickupLabel}
+              </p>
             </div>
             <div className="space-y-1 text-sm">
               {cart?.items?.map((l) => (
@@ -132,7 +160,7 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep("info")}>Retour</Button>
               <Button className="flex-1" disabled={placing} onClick={place} data-testid="confirm-order-btn">
-                {placing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer la commande"}
+                {placing ? <Loader2 className="w-4 h-4 animate-spin" /> : `Confirmer la ${sector.orderNoun}`}
               </Button>
             </div>
           </div>

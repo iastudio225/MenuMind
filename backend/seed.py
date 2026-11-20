@@ -98,6 +98,7 @@ async def seed_demo_restaurant():
         "address": "Rue des Jardins, Cocody", "city": "Abidjan", "country": "Côte d'Ivoire",
         "currency": "FCFA", "timezone": "Africa/Abidjan", "opening_hours": default_opening_hours(),
         "status": "active", "plan": "BUSINESS", "onboarding_completed": True,
+        "secteur": "restaurant",
         "widget": {"primary_color": "#E05638", "secondary_color": "#0F172A",
                    "welcome_message": "Bonjour 👋 Bienvenue chez Awa ! Que souhaitez-vous commander ?", "logo": ""},
         "created_at": ts, "updated_at": ts,

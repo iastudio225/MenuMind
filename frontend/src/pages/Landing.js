@@ -15,13 +15,13 @@ const HERO_BG =
 
 const STATIC_PLANS = [
   { code: "STARTER", price: 15000, highlighted: false, badge: "Démarrage",
-    desc: "Parfait pour les maquis et petits fast-foods.",
-    features: ["Jusqu'à 300 commandes/mois", "Agent IA Web", "Menu digital", "Support 6j/7"] },
+    desc: "Parfait pour les maquis, boutiques et petits commerces.",
+    features: ["Jusqu'à 300 commandes/mois", "Agent IA Web", "Catalogue digital", "Support 6j/7"] },
   { code: "BUSINESS", price: 30000, highlighted: true, badge: "Le plus populaire 🔥",
-    desc: "Idéal pour les restaurants établis avec livraison.",
+    desc: "Idéal pour les établissements établis avec livraison.",
     features: ["Commandes illimitées", "Agent IA multi-langue", "Zones de livraison", "Multi-utilisateurs", "Branding personnalisé"] },
   { code: "PRO", price: 50000, highlighted: false, badge: "Entreprise",
-    desc: "Pour les chaînes et grands établissements.",
+    desc: "Pour les chaînes, franchises et grands établissements.",
     features: ["Multi-établissements", "Manager dédié 24/7", "Statistiques avancées", "API & webhooks"] },
 ];
 
@@ -86,10 +86,10 @@ export default function Landing() {
         <div className="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Sparkles className="w-4 h-4" /> Spécial restaurants en Côte d'Ivoire
+              <Sparkles className="w-4 h-4" /> Restaurants, logistique & e-commerce en Côte d'Ivoire
             </span>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
-              Votre réceptionniste <span className="text-primary">IA</span> qui prend vos commandes 24h/24
+              Votre assistant <span className="text-primary">IA</span> qui prend vos commandes 24h/24
             </h1>
             <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-xl">
               Ne manquez plus aucune commande. MenuMind comprend vos clients en langage naturel,
@@ -147,14 +147,14 @@ export default function Landing() {
       <section id="features" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-16 lg:py-24">
         <div className="text-center max-w-2xl mx-auto mb-14">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight">Bien plus qu'un simple chatbot</h2>
-          <p className="mt-4 text-muted-foreground">Une plateforme complète pour automatiser la prise de commande de votre restaurant.</p>
+          <p className="mt-4 text-muted-foreground">Une plateforme complète pour automatiser la prise de commande de votre établissement.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { icon: Bot, title: "Agent IA intelligent", desc: "Comprend le langage naturel et l'argot local, propose uniquement vos vrais plats." },
+            { icon: Bot, title: "Agent IA intelligent", desc: "Comprend le langage naturel et l'argot local, propose uniquement vos vrais produits." },
             { icon: Clock, title: "Disponible 24h/24", desc: "Vos clients commandent même quand vous dormez. Aucune commande manquée." },
             { icon: ShoppingBag, title: "Panier & commandes", desc: "Calcul du total côté serveur, création de commande exploitable immédiatement." },
-            { icon: Shield, title: "Multi-tenant sécurisé", desc: "Chaque restaurant totalement isolé. Vos données ne sont jamais mélangées." },
+            { icon: Shield, title: "Multi-tenant sécurisé", desc: "Chaque établissement totalement isolé. Vos données ne sont jamais mélangées." },
             { icon: BarChart3, title: "Tableau de bord", desc: "Suivez vos commandes, votre chiffre d'affaires et vos clients en temps réel." },
             { icon: MessageSquare, title: "Widget intégrable", desc: "Un simple script à ajouter sur votre site. Bientôt WhatsApp & Instagram." },
           ].map((f, i) => (
@@ -175,7 +175,7 @@ export default function Landing() {
       <section id="pricing" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-16 lg:py-24">
         <div className="text-center max-w-2xl mx-auto mb-14">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight">Des tarifs simples et transparents</h2>
-          <p className="mt-4 text-muted-foreground">Choisissez le plan adapté à votre restaurant. Résiliable à tout moment.</p>
+          <p className="mt-4 text-muted-foreground">Choisissez le plan adapté à votre établissement. Résiliable à tout moment.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           {plans.map((p) => (
@@ -221,7 +221,7 @@ export default function Landing() {
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight max-w-2xl mx-auto">
             Prêt à ne plus jamais manquer une commande ?
           </h2>
-          <p className="mt-4 text-white/70 max-w-xl mx-auto">Créez votre compte restaurant en 2 minutes et activez votre réceptionniste IA.</p>
+          <p className="mt-4 text-white/70 max-w-xl mx-auto">Créez votre compte professionnel en 2 minutes et activez votre assistant IA.</p>
           <Link to="/register">
             <Button size="lg" className="mt-8 h-12 px-8 text-base" data-testid="cta-bottom-signup">
               Créer mon compte <Zap className="w-4 h-4 ml-1" />
@@ -231,7 +231,7 @@ export default function Landing() {
       </section>
 
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} MenuMind — Réceptionniste IA pour restaurants. Abidjan, Côte d'Ivoire.
+        © {new Date().getFullYear()} MenuMind — Assistant IA de prise de commande. Abidjan, Côte d'Ivoire.
       </footer>
     </div>
   );

@@ -33,7 +33,7 @@ async def _fetch_timed(label, fetch, sql, *args):
 
 COLLECTIONS = (
     "users", "restaurants", "plans", "menu_items", "menu_categories",
-    "menu_option_groups", "menu_options", "weekly_menus", "orders", "carts",
+    "menu_option_groups", "menu_options", "menu_variants", "weekly_menus", "orders", "carts",
     "customers", "order_status_history", "ai_conversations", "delivery_zones",
     "audit_logs", "password_reset_tokens", "login_attempts",
     "password_reset_requests", "counters", "pending_registrations",

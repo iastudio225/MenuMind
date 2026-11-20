@@ -12,15 +12,24 @@ class CreateCartBody(BaseModel):
     restaurant_public_id: str
 
 
+class BookingInfo(BaseModel):
+    pickup_address: Optional[str] = ""
+    dropoff_address: Optional[str] = ""
+    distance_km: Optional[float] = Field(default=None, ge=0)
+    weight_kg: Optional[float] = Field(default=None, ge=0)
+
+
 class AddItemBody(BaseModel):
     item_id: str
     quantity: int = Field(ge=1)
     option_ids: Optional[List[str]] = []
+    booking: Optional[BookingInfo] = None
 
 
 class UpdateItemBody(BaseModel):
     quantity: Optional[int] = Field(default=None, ge=1)
     option_ids: Optional[List[str]] = None
+    booking: Optional[BookingInfo] = None
 
 
 @router.get("/menu/{restaurant_public_id}")
@@ -29,6 +38,7 @@ async def public_menu(restaurant_public_id: str):
     data = await svc.get_available_menu(db, str(r["_id"]))
     data["restaurant"]["currency"] = r.get("currency", "FCFA")
     data["restaurant"]["logo"] = r.get("logo", "")
+    data["restaurant"]["secteur"] = r.get("secteur", "restaurant")
     data["restaurant"]["welcome_message"] = r.get("widget", {}).get("welcome_message", "")
     # D1.50: widget theming for the public menu — same pattern as welcome_message,
     # only the public widget config is read, never private restaurant fields.
@@ -59,7 +69,9 @@ async def get_cart(cart_id: str):
 @router.post("/cart/{cart_id}/items")
 async def add_item(cart_id: str, body: AddItemBody):
     cart = await svc.get_cart(db, cart_id)
-    cart = await svc.add_to_cart(db, cart["restaurant_id"], cart, body.item_id, body.quantity, body.option_ids or [])
+    booking = body.booking.model_dump(exclude_none=True) if body.booking else None
+    cart = await svc.add_to_cart(db, cart["restaurant_id"], cart, body.item_id, body.quantity,
+                                 body.option_ids or [], booking)
     view = await svc.calculate_cart(db, cart["restaurant_id"], cart)
     return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], "status": cart["status"], **view}
 
@@ -67,7 +79,9 @@ async def add_item(cart_id: str, body: AddItemBody):
 @router.patch("/cart/{cart_id}/items/{cart_item_id}")
 async def update_item(cart_id: str, cart_item_id: str, body: UpdateItemBody):
     cart = await svc.get_cart(db, cart_id)
-    cart = await svc.update_cart_item(db, cart["restaurant_id"], cart, cart_item_id, body.quantity, body.option_ids)
+    booking = body.booking.model_dump(exclude_none=True) if body.booking else None
+    cart = await svc.update_cart_item(db, cart["restaurant_id"], cart, cart_item_id,
+                                      body.quantity, body.option_ids, booking)
     view = await svc.calculate_cart(db, cart["restaurant_id"], cart)
     return {"cart_id": cart_id, "restaurant_id": cart["restaurant_id"], "status": cart["status"], **view}
 

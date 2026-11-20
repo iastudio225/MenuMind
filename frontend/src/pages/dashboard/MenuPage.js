@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -18,17 +18,21 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Pencil, Trash2, ChevronUp, ChevronDown, Search, Loader2, Check, X,
-  ExternalLink, UtensilsCrossed, ListChecks, Image as ImageIcon,
+  ExternalLink, UtensilsCrossed, ListChecks, Image as ImageIcon, Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import { useAuth } from "@/context/AuthContext";
+import { DashboardRestaurantContext } from "@/layouts/DashboardLayout";
 
 const err = (e) => toast.error(formatApiErrorDetail(e.response?.data?.detail) || "Erreur");
 
 export default function MenuPage() {
   const { user } = useAuth();
+  const restaurant = useContext(DashboardRestaurantContext);
+  const sector = secteurConfig(restaurant?.secteur);
   const canManage = user?.role === "RESTAURANT_OWNER" || user?.role === "RESTAURANT_MANAGER";
 
   const [loading, setLoading] = useState(true);
@@ -117,8 +121,8 @@ export default function MenuPage() {
     <div className="max-w-5xl">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="menu-title">Menu & Carte</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Gérez vos catégories, plats et options.</p>
+          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="menu-title">{sector.value === "restaurant" ? "Menu & Carte" : sector.catalogueLabel}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Gérez vos catégories, {sector.itemsPlural} et options.</p>
         </div>
         {publicId && (
           <a href={`${process.env.REACT_APP_BACKEND_URL}/api/menu/public/${publicId}`} target="_blank" rel="noreferrer">
@@ -138,7 +142,7 @@ export default function MenuPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9" placeholder="Rechercher un plat…" value={search}
+              <Input className="pl-9" placeholder={`Rechercher un ${sector.itemLabel.toLowerCase()}…`} value={search}
                 onChange={(e) => setSearch(e.target.value)} data-testid="menu-search-input" />
             </div>
             <Select value={filterCat} onValueChange={setFilterCat}>
@@ -152,8 +156,8 @@ export default function MenuPage() {
               <>
                 <CategoryDialog onSaved={load} nextOrder={categories.length + 1}
                   trigger={<Button variant="outline" data-testid="add-category-btn"><Plus className="w-4 h-4 mr-1" /> Catégorie</Button>} />
-                <ItemDialog onSaved={load} categories={categories} groups={groups}
-                  trigger={<Button data-testid="add-item-btn" disabled={!categories.length}><Plus className="w-4 h-4 mr-1" /> Article</Button>} />
+                <ItemDialog onSaved={load} categories={categories} groups={groups} sector={sector}
+                  trigger={<Button data-testid="add-item-btn" disabled={!categories.length}><Plus className="w-4 h-4 mr-1" /> {sector.itemLabel}</Button>} />
               </>
             )}
           </div>
@@ -180,7 +184,7 @@ export default function MenuPage() {
                       trigger={<Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`edit-category-${cat.id}`}><Pencil className="w-4 h-4" /></Button>} />
                     <ConfirmDelete
                       title="Supprimer la catégorie ?"
-                      description="La catégorie ne peut être supprimée que si elle ne contient aucun article."
+                      description={`La catégorie ne peut être supprimée que si elle ne contient aucun ${sector.itemLabel.toLowerCase()}.`}
                       onConfirm={async () => { try { await api.delete(`/menu/categories/${cat.id}`); toast.success("Catégorie supprimée."); load(); } catch (e) { err(e); } }}
                       trigger={<Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" data-testid={`delete-category-${cat.id}`}><Trash2 className="w-4 h-4" /></Button>} />
                   </div>
@@ -188,7 +192,7 @@ export default function MenuPage() {
               </div>
               <div className="divide-y divide-border">
                 {(itemsByCat[cat.id] || []).length === 0 && (
-                  <p className="px-5 py-4 text-sm text-muted-foreground">Aucun article.</p>
+                  <p className="px-5 py-4 text-sm text-muted-foreground">Aucun {sector.itemLabel.toLowerCase()}.</p>
                 )}
                 {(itemsByCat[cat.id] || []).map((it, ii) => (
                   <div key={it.id} className="flex items-center gap-3 px-5 py-3 flex-wrap" data-testid={`item-row-${it.id}`}>
@@ -196,8 +200,11 @@ export default function MenuPage() {
                       {it.image_url ? <img src={it.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" /> : <ImageIcon className="w-4 h-4 text-muted-foreground" />}
                     </div>
                     <div className="flex-1 min-w-[140px]">
-                      <p className="font-medium flex items-center gap-2">
+                      <p className="font-medium flex items-center gap-2 flex-wrap">
                         {it.name} {!it.active && <Badge variant="secondary" className="text-[10px]">Inactif</Badge>}
+                        {it.stock != null && Number(it.stock) <= 0 && <Badge variant="destructive" className="text-[10px]">Rupture</Badge>}
+                        {it.stock != null && Number(it.stock) > 0 && <Badge variant="outline" className="text-[10px]">Stock {it.stock}</Badge>}
+                        {it.sku && <span className="text-[10px] text-muted-foreground font-mono">{it.sku}</span>}
                       </p>
                       {it.description && <p className="text-xs text-muted-foreground truncate max-w-xs">{it.description}</p>}
                     </div>
@@ -231,10 +238,14 @@ export default function MenuPage() {
                       <div className="flex items-center gap-1">
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => reorderItem(cat.id, ii, -1)} data-testid={`item-up-${it.id}`}><ChevronUp className="w-4 h-4" /></Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => reorderItem(cat.id, ii, 1)} data-testid={`item-down-${it.id}`}><ChevronDown className="w-4 h-4" /></Button>
-                        <ItemDialog item={it} categories={categories} groups={groups} onSaved={load}
+                        {(it.option_group_ids || []).length > 0 && (
+                          <VariantMatrixDialog item={it} groups={groups} onSaved={load}
+                            trigger={<Button size="icon" variant="ghost" className="h-8 w-8" title="Variantes" data-testid={`variants-item-${it.id}`}><Layers className="w-4 h-4" /></Button>} />
+                        )}
+                        <ItemDialog item={it} categories={categories} groups={groups} onSaved={load} sector={sector}
                           trigger={<Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`edit-item-${it.id}`}><Pencil className="w-4 h-4" /></Button>} />
-                        <ConfirmDelete title="Supprimer l'article ?" description={`« ${it.name} » sera définitivement supprimé.`}
-                          onConfirm={async () => { try { await api.delete(`/menu/items/${it.id}`); toast.success("Article supprimé."); load(); } catch (e) { err(e); } }}
+                        <ConfirmDelete title={`Supprimer l'${sector.value === "restaurant" ? "article" : "élément"} ?`} description={`« ${it.name} » sera définitivement supprimé.`}
+                          onConfirm={async () => { try { await api.delete(`/menu/items/${it.id}`); toast.success("Supprimé."); load(); } catch (e) { err(e); } }}
                           trigger={<Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" data-testid={`delete-item-${it.id}`}><Trash2 className="w-4 h-4" /></Button>} />
                       </div>
                     )}
@@ -283,7 +294,9 @@ export default function MenuPage() {
                     <span className="font-mono text-xs text-muted-foreground w-24 text-right">
                       {o.price_delta > 0 ? `+${formatFCFA(o.price_delta)}` : "Inclus"}
                     </span>
-                    {!o.available && <Badge variant="secondary" className="text-[10px]">Rupture</Badge>}
+                    {!o.available && <Badge variant="secondary" className="text-[10px]">Indisponible</Badge>}
+                    {o.stock != null && Number(o.stock) <= 0 && <Badge variant="destructive" className="text-[10px]">Rupture</Badge>}
+                    {o.stock != null && Number(o.stock) > 0 && <Badge variant="outline" className="text-[10px]">Stock {o.stock}</Badge>}
                     {canManage && (
                       <div className="flex items-center gap-1">
                         <OptionDialog groupId={g.id} option={o} onSaved={load}
@@ -346,7 +359,7 @@ function CategoryDialog({ trigger, category, onSaved }) {
       <span onClick={() => setOpen(true)}>{trigger}</span>
       <DialogContent data-testid="category-dialog">
         <DialogHeader><DialogTitle>{category ? "Modifier la catégorie" : "Nouvelle catégorie"}</DialogTitle>
-          <DialogDescription>Organisez votre menu en catégories (Plats, Boissons…).</DialogDescription></DialogHeader>
+          <DialogDescription>Organisez votre catalogue en catégories.</DialogDescription></DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2"><Label>Nom</Label><Input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} data-testid="category-name-input" /></div>
           <div className="space-y-2"><Label>Description</Label><Textarea rows={2} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} data-testid="category-description-input" /></div>
@@ -358,14 +371,31 @@ function CategoryDialog({ trigger, category, onSaved }) {
   );
 }
 
-function ItemDialog({ trigger, item, categories, groups, onSaved }) {
+function ItemDialog({ trigger, item, categories, groups, onSaved, sector }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
   useEffect(() => {
-    if (open) setForm(item
-      ? { category_id: item.category_id, name: item.name, description: item.description || "", image_url: item.image_url || "", price: String(item.price), active: item.active, available: item.available, option_group_ids: item.option_group_ids || [] }
-      : { category_id: categories[0]?.id || "", name: "", description: "", image_url: "", price: "", active: true, available: true, option_group_ids: [] });
+    if (open) {
+      const rules = item?.pricing_rules || {};
+      const mode = Number(rules.per_km || 0) > 0 && Number(rules.per_kg || 0) > 0 ? "distance_weight"
+        : Number(rules.per_km || 0) > 0 ? "distance"
+          : Number(rules.per_kg || 0) > 0 ? "weight" : "fixed";
+      setForm(item
+        ? {
+          category_id: item.category_id, name: item.name, description: item.description || "", image_url: item.image_url || "",
+          price: String(item.price), active: item.active, available: item.available, option_group_ids: item.option_group_ids || [],
+          pricing_mode: mode, pricing_base: String(rules.base ?? item.price ?? ""),
+          pricing_per_km: String(rules.per_km ?? ""), pricing_per_kg: String(rules.per_kg ?? ""), pricing_min: String(rules.min ?? ""),
+          stock: item.stock != null ? String(item.stock) : "", sku: item.sku || "",
+        }
+        : {
+          category_id: categories[0]?.id || "", name: "", description: "", image_url: "", price: "",
+          active: true, available: true, option_group_ids: [],
+          pricing_mode: "fixed", pricing_base: "", pricing_per_km: "", pricing_per_kg: "", pricing_min: "",
+          stock: "", sku: "",
+        });
+    }
   }, [open, item, categories]);
   const toggleGroup = (gid) => setForm((f) => ({ ...f, option_group_ids: f.option_group_ids.includes(gid) ? f.option_group_ids.filter((x) => x !== gid) : [...f.option_group_ids, gid] }));
   const submit = async (e) => {
@@ -373,21 +403,37 @@ function ItemDialog({ trigger, item, categories, groups, onSaved }) {
     const price = parseInt(form.price, 10);
     if (isNaN(price) || price < 0) { toast.error("Prix invalide"); return; }
     setSaving(true);
-    const payload = { ...form, price };
+    const { pricing_mode, pricing_base, pricing_per_km, pricing_per_kg, pricing_min, ...base } = form;
+    const shouldPersistPricing = sector?.value === "logistique"
+      || (item?.pricing_rules && Object.keys(item.pricing_rules).length > 0);
+    const pricingRules = !shouldPersistPricing
+      ? (item?.pricing_rules || {})
+      : (pricing_mode === "fixed" && !pricing_base && !pricing_min)
+        ? {}
+        : {
+          base: Number(pricing_base || price),
+          per_km: (pricing_mode === "distance" || pricing_mode === "distance_weight") ? Number(pricing_per_km || 0) : 0,
+          per_kg: (pricing_mode === "weight" || pricing_mode === "distance_weight") ? Number(pricing_per_kg || 0) : 0,
+          min: Number(pricing_min || 0),
+        };
+    const stockValue = form.stock === "" ? null : Number(form.stock);
+    const payload = { ...base, price, pricing_rules: pricingRules, stock: stockValue, sku: form.sku || "" };
     try {
       if (item) await api.patch(`/menu/items/${item.id}`, payload);
       else await api.post("/menu/items", payload);
-      toast.success(item ? "Plat modifié." : "Plat ajouté avec succès.");
+      toast.success(item ? `${sector?.itemLabel || "Article"} modifié.` : `${sector?.itemLabel || "Article"} ajouté avec succès.`);
       setOpen(false); onSaved();
     } catch (e) { err(e); } finally { setSaving(false); }
   };
   if (!form && open) return null;
+  const showPricing = sector?.value === "logistique" || (item?.pricing_rules && Object.keys(item.pricing_rules).length > 0);
+  const showStock = sector?.value === "e-commerce" || item?.stock != null || !!item?.sku;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <span onClick={() => setOpen(true)}>{trigger}</span>
       <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="item-dialog">
-        <DialogHeader><DialogTitle>{item ? "Modifier l'article" : "Nouvel article"}</DialogTitle>
-          <DialogDescription>Renseignez les informations du plat et ses options.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{item ? `Modifier l'${sector?.itemLabel?.toLowerCase() || "article"}` : `Nouvel ${sector?.itemLabel?.toLowerCase() || "article"}`}</DialogTitle>
+          <DialogDescription>Renseignez les informations du {sector?.itemLabel?.toLowerCase() || "plat"} et ses options.</DialogDescription></DialogHeader>
         {form && (
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-2"><Label>Catégorie</Label>
@@ -402,6 +448,44 @@ function ItemDialog({ trigger, item, categories, groups, onSaved }) {
               <div className="space-y-2"><Label>Prix (FCFA)</Label><Input type="number" min={0} required value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} data-testid="item-price-input" /></div>
               <div className="space-y-2"><Label>Image (URL)</Label><Input value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="https://…" data-testid="item-image-input" /></div>
             </div>
+            {showPricing && (
+              <div className="space-y-3 rounded-lg border border-border p-3" data-testid="item-pricing-section">
+                <p className="font-medium text-sm">Tarification du service</p>
+                <Select value={form.pricing_mode} onValueChange={(v) => setForm((f) => ({ ...f, pricing_mode: v }))}>
+                  <SelectTrigger data-testid="item-pricing-mode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">Prix fixe</SelectItem>
+                    <SelectItem value="distance">Au kilomètre</SelectItem>
+                    <SelectItem value="weight">Au poids</SelectItem>
+                    <SelectItem value="distance_weight">Distance + poids</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label>Prix de base (FCFA)</Label><Input type="number" min={0} value={form.pricing_base} onChange={(e) => setForm((f) => ({ ...f, pricing_base: e.target.value }))} data-testid="item-pricing-base" /></div>
+                  <div className="space-y-1"><Label>Minimum (FCFA)</Label><Input type="number" min={0} value={form.pricing_min} onChange={(e) => setForm((f) => ({ ...f, pricing_min: e.target.value }))} data-testid="item-pricing-min" /></div>
+                  {(form.pricing_mode === "distance" || form.pricing_mode === "distance_weight") && (
+                    <div className="space-y-1"><Label>Prix / km (FCFA)</Label><Input type="number" min={0} value={form.pricing_per_km} onChange={(e) => setForm((f) => ({ ...f, pricing_per_km: e.target.value }))} data-testid="item-pricing-per-km" /></div>
+                  )}
+                  {(form.pricing_mode === "weight" || form.pricing_mode === "distance_weight") && (
+                    <div className="space-y-1"><Label>Prix / kg (FCFA)</Label><Input type="number" min={0} value={form.pricing_per_kg} onChange={(e) => setForm((f) => ({ ...f, pricing_per_kg: e.target.value }))} data-testid="item-pricing-per-kg" /></div>
+                  )}
+                </div>
+              </div>
+            )}
+            {showStock && (
+              <div className="grid grid-cols-2 gap-4" data-testid="item-stock-section">
+                <div className="space-y-2">
+                  <Label>Stock</Label>
+                  <Input type="number" min={0} value={form.stock} placeholder="Illimité si vide"
+                    onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} data-testid="item-stock-input" />
+                </div>
+                <div className="space-y-2">
+                  <Label>SKU / Référence</Label>
+                  <Input value={form.sku} placeholder="SKU-001"
+                    onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} data-testid="item-sku-input" />
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2"><Label>Actif</Label><Switch checked={form.active} onCheckedChange={(v) => setForm((f) => ({ ...f, active: v }))} data-testid="item-active-switch" /></div>
               <div className="flex items-center gap-2"><Label>Disponible</Label><Switch checked={form.available} onCheckedChange={(v) => setForm((f) => ({ ...f, available: v }))} data-testid="item-available-switch" /></div>
@@ -469,16 +553,154 @@ function GroupDialog({ trigger, group, onSaved }) {
   );
 }
 
+function VariantMatrixDialog({ trigger, item, groups, onSaved }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [rows, setRows] = useState({});
+
+  const applicableGroups = useMemo(
+    () => groups.filter((g) => (item.option_group_ids || []).includes(g.id) && (g.options || []).length > 0),
+    [groups, item],
+  );
+  const optionName = useMemo(() => {
+    const map = {};
+    applicableGroups.forEach((g) => (g.options || []).forEach((o) => { map[o.id] = `${g.name}: ${o.name}`; }));
+    return map;
+  }, [applicableGroups]);
+  const combos = useMemo(() => {
+    if (!applicableGroups.length) return [];
+    return applicableGroups.reduce((acc, g) => {
+      const opts = (g.options || []).filter((o) => o.active !== false);
+      if (!acc.length) return opts.map((o) => [o.id]);
+      return acc.flatMap((prefix) => opts.map((o) => [...prefix, o.id]));
+    }, []);
+  }, [applicableGroups]);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get(`/menu/items/${item.id}/variants`);
+      const byKey = {};
+      (data || []).forEach((v) => { byKey[v.key] = v; });
+      const next = {};
+      combos.forEach((ids) => {
+        const key = [...ids].sort().join("|");
+        const v = byKey[key];
+        next[key] = v
+          ? { ...v, stock: v.stock != null ? String(v.stock) : "", price_delta: String(v.price_delta ?? 0), sku: v.sku || "" }
+          : { option_ids: ids, sku: "", price_delta: "0", stock: "", active: true };
+      });
+      setRows(next);
+    } catch (e) { err(e); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { if (open) load(); }, [open, item.id, combos]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateRow = (key, patch) => setRows((r) => ({ ...r, [key]: { ...r[key], ...patch } }));
+  const isPristine = (row) => !row.id && !row.sku && (row.stock === "" || row.stock == null)
+    && Number(row.price_delta || 0) === 0 && row.active !== false;
+
+  const save = async (e) => {
+    e.preventDefault();
+    const toSave = Object.values(rows).filter((row) => !isPristine(row));
+    if (!toSave.length) { toast.info("Aucune variante à enregistrer."); return; }
+    setSaving(true);
+    try {
+      await Promise.all(toSave.map((row) => api.post(`/menu/items/${item.id}/variants`, {
+        option_ids: row.option_ids,
+        sku: row.sku || "",
+        price_delta: Number(row.price_delta) || 0,
+        stock: row.stock === "" ? null : Number(row.stock),
+        active: row.active !== false,
+      })));
+      toast.success("Matrice de variantes enregistrée.");
+      setOpen(false);
+      onSaved();
+    } catch (e) { err(e); }
+    finally { setSaving(false); }
+  };
+
+  const deleteRow = async (key, row) => {
+    try {
+      if (row.id) await api.delete(`/menu/variants/${row.id}`);
+      setRows((r) => { const next = { ...r }; delete next[key]; return next; });
+      toast.success("Variante supprimée.");
+    } catch (e) { err(e); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <span onClick={() => setOpen(true)}>{trigger}</span>
+      <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="variant-matrix-dialog">
+        <DialogHeader>
+          <DialogTitle>Variantes — {item.name}</DialogTitle>
+          <DialogDescription>
+            Chaque combinaison d'options peut avoir son stock, son SKU et son supplément de prix.
+          </DialogDescription>
+        </DialogHeader>
+        {loading ? (
+          <div className="grid place-items-center py-10"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+        ) : combos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Ajoutez d'abord des groupes d'options à cet article (onglet Groupes d'options).</p>
+        ) : (
+          <form onSubmit={save} className="space-y-4">
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/50 text-muted-foreground">
+                  <tr>
+                    <th className="text-left font-medium px-3 py-2">Combinaison</th>
+                    <th className="text-left font-medium px-3 py-2">SKU</th>
+                    <th className="text-left font-medium px-3 py-2">Supplément</th>
+                    <th className="text-left font-medium px-3 py-2">Stock</th>
+                    <th className="text-left font-medium px-3 py-2">Active</th>
+                    <th className="text-right font-medium px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(rows).map(([key, row]) => (
+                    <tr key={key} className="border-t border-border" data-testid={`variant-row-${key}`}>
+                      <td className="px-3 py-2 text-xs">{row.option_ids.map((id) => optionName[id] || id).join(" · ")}</td>
+                      <td className="px-3 py-2"><Input className="h-8 w-32" value={row.sku} onChange={(e) => updateRow(key, { sku: e.target.value })} placeholder="SKU" data-testid={`variant-sku-${key}`} /></td>
+                      <td className="px-3 py-2"><Input className="h-8 w-24" type="number" min={0} value={row.price_delta} onChange={(e) => updateRow(key, { price_delta: e.target.value })} data-testid={`variant-price-${key}`} /></td>
+                      <td className="px-3 py-2"><Input className="h-8 w-24" type="number" min={0} value={row.stock} onChange={(e) => updateRow(key, { stock: e.target.value })} placeholder="∞" data-testid={`variant-stock-${key}`} /></td>
+                      <td className="px-3 py-2"><Switch checked={row.active !== false} onCheckedChange={(v) => updateRow(key, { active: v })} data-testid={`variant-active-${key}`} /></td>
+                      <td className="px-3 py-2 text-right">
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => deleteRow(key, row)} data-testid={`variant-delete-${key}`}><Trash2 className="w-4 h-4" /></Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={saving} data-testid="variant-save">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer la matrice"}</Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function OptionDialog({ trigger, groupId, option, onSaved }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", price_delta: 0, available: true });
+  const [form, setForm] = useState({ name: "", price_delta: 0, available: true, stock: "" });
   useEffect(() => {
-    if (open) setForm(option ? { name: option.name, price_delta: option.price_delta, available: option.available } : { name: "", price_delta: 0, available: true });
+    if (open) setForm(option
+      ? { name: option.name, price_delta: option.price_delta, available: option.available,
+          stock: option.stock != null ? String(option.stock) : "" }
+      : { name: "", price_delta: 0, available: true, stock: "" });
   }, [open, option]);
   const submit = async (e) => {
     e.preventDefault(); setSaving(true);
-    const payload = { ...form, price_delta: Number(form.price_delta) || 0 };
+    const payload = {
+      ...form,
+      price_delta: Number(form.price_delta) || 0,
+      stock: form.stock === "" ? null : Number(form.stock),
+    };
     try {
       if (option) await api.patch(`/menu/options/${option.id}`, payload);
       else await api.post(`/menu/option-groups/${groupId}/options`, payload);
@@ -494,7 +716,10 @@ function OptionDialog({ trigger, groupId, option, onSaved }) {
           <DialogDescription>Ex. « Fromage » avec un supplément de 500 FCFA.</DialogDescription></DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2"><Label>Nom</Label><Input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} data-testid="option-name-input" /></div>
-          <div className="space-y-2"><Label>Supplément de prix (FCFA)</Label><Input type="number" min={0} value={form.price_delta} onChange={(e) => setForm((f) => ({ ...f, price_delta: e.target.value }))} data-testid="option-price-input" /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><Label>Supplément de prix (FCFA)</Label><Input type="number" min={0} value={form.price_delta} onChange={(e) => setForm((f) => ({ ...f, price_delta: e.target.value }))} data-testid="option-price-input" /></div>
+            <div className="space-y-2"><Label>Stock variante</Label><Input type="number" min={0} value={form.stock} placeholder="Illimité si vide" onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))} data-testid="option-stock-input" /></div>
+          </div>
           <div className="flex items-center justify-between"><Label>Disponible</Label><Switch checked={form.available} onCheckedChange={(v) => setForm((f) => ({ ...f, available: v }))} data-testid="option-available-switch" /></div>
           <DialogFooter><Button type="submit" disabled={saving} data-testid="option-submit">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}</Button></DialogFooter>
         </form>

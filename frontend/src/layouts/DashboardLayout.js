@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_LABELS } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import api from "@/lib/api";
 
 export const DashboardRestaurantContext = React.createContext(null);
@@ -16,13 +17,23 @@ const NAV = [
   { to: "/dashboard", end: true, label: "Vue d'ensemble", icon: LayoutDashboard, testid: "nav-overview" },
   { to: "/dashboard/orders", label: "Commandes", icon: ShoppingBag, testid: "nav-orders" },
   { to: "/dashboard/menu", label: "Menu & Carte", icon: UtensilsCrossed, testid: "nav-menu" },
-  { to: "/dashboard/weekly-menu", label: "Menu hebdomadaire", icon: CalendarDays, testid: "nav-weekly-menu" },
+  { to: "/dashboard/weekly-menu", label: "Menu hebdomadaire", icon: CalendarDays, testid: "nav-weekly-menu", restaurantOnly: true },
   { to: "/dashboard/customers", label: "Clients", icon: Users, testid: "nav-customers" },
   { to: "/dashboard/delivery", label: "Livraison & Zones", icon: Truck, testid: "nav-delivery" },
   { to: "/dashboard/ai", label: "Réceptionniste IA", icon: MessageSquare, testid: "nav-ai" },
   { to: "/dashboard/users", label: "Utilisateurs", icon: UserCog, testid: "nav-users", ownerOnly: true },
   { to: "/dashboard/settings", label: "Paramètres", icon: Settings, testid: "nav-settings" },
 ];
+
+function navForSector(sectorValue) {
+  const sector = secteurConfig(sectorValue);
+  const CatalogueIcon = sector.value === "logistique" ? Truck : sector.value === "e-commerce" ? ShoppingBag : UtensilsCrossed;
+  return NAV
+    .filter((n) => !n.restaurantOnly || sector.value === "restaurant")
+    .map((n) => n.to === "/dashboard/menu"
+      ? { ...n, label: sector.value === "restaurant" ? "Menu & Carte" : sector.catalogueLabel, icon: CatalogueIcon }
+      : n);
+}
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -41,7 +52,8 @@ export default function DashboardLayout() {
     navigate("/login");
   };
 
-  const visibleNav = NAV.filter((n) => !n.ownerOnly || user?.role === "RESTAURANT_OWNER");
+  const sector = secteurConfig(restaurant?.secteur);
+  const visibleNav = navForSector(restaurant?.secteur).filter((n) => !n.ownerOnly || user?.role === "RESTAURANT_OWNER");
 
   const SidebarContent = () => (
     <>
@@ -51,7 +63,7 @@ export default function DashboardLayout() {
       </div>
       <div className="px-4 py-4">
         <div className="rounded-xl bg-secondary px-3 py-2.5">
-          <p className="text-xs text-muted-foreground">Restaurant</p>
+          <p className="text-xs text-muted-foreground">{sector.label}</p>
           <p className="font-semibold text-sm truncate" data-testid="sidebar-restaurant-name">{restaurant?.name || "..."}</p>
         </div>
       </div>

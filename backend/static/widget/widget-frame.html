@@ -231,6 +231,12 @@
   var STORAGE_CONV = "menumind:conv:" + restaurantId;
   var STORAGE_CART = "menumind:cart:" + restaurantId;
   var messages = [], welcome = "", shopName = "Assistant";
+  var SECTEURS = {
+    restaurant: { cartLabel: "Panier", cartNoun: "panier", addToast: "ajouté au panier" },
+    logistique: { cartLabel: "Demande", cartNoun: "demande", addToast: "ajouté à la demande" },
+    "e-commerce": { cartLabel: "Panier", cartNoun: "panier", addToast: "ajouté au panier" }
+  };
+  var sector = SECTEURS.restaurant;
   var lastFailedText = null, lastFailedStatus = null;
   // D1.54: mini-sélecteur d'options ouvert (null = fermé), verrou synchrone
   // d'ajout (anti double-clic — même rôle que `sending` côté chat), dernier
@@ -320,7 +326,7 @@
         card.setAttribute("data-testid", "chat-cart-card");
         var title = document.createElement("p");
         title.className = "cart-title";
-        title.textContent = " Panier";
+        title.textContent = " " + sector.cartLabel;
         card.appendChild(title);
         cart.items.forEach(function (line) {
           var l = document.createElement("div");
@@ -520,7 +526,7 @@
         closeSelector(false);
         render();
         el.input.focus();
-        showToast("« " + (product.name || "Article") + " » ajouté au panier", false);
+        showToast("« " + (product.name || "Article") + " » " + sector.addToast, false);
         return;
       }
       var detail = apiErrorDetail(r.data && r.data.detail);
@@ -530,7 +536,7 @@
         purgeSession();
         closeSelector(false);
         render();
-        showToast(detail + " Envoyez un message pour démarrer un nouveau panier.", true);
+        showToast(detail + " Envoyez un message pour démarrer un nouveau " + sector.cartNoun + ".", true);
         return;
       }
       // 400 (article/options invalides) ou autre: le sélecteur reste ouvert
@@ -580,7 +586,7 @@
     price.textContent = fmt(p.price);
     info.appendChild(price);
     body.appendChild(info);
-    if (p.available) {
+    if (p.available && p.in_stock !== false) {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "p-add";
@@ -593,7 +599,7 @@
     } else {
       var none = document.createElement("span");
       none.className = "p-none";
-      none.textContent = "Indisponible";
+      none.textContent = p.in_stock === false ? "Rupture" : "Indisponible";
       none.setAttribute("data-testid", "chat-product-unavailable-" + p.id);
       body.appendChild(none);
     }
@@ -908,7 +914,7 @@
   });
 
   if (!restaurantId) {
-    showError("Identifiant restaurant manquant.", null);
+    showError("Identifiant de l'établissement manquant.", null);
   } else {
     fetch(API + "/api/public/menu/" + encodeURIComponent(restaurantId))
       .then(function (res) {
@@ -918,6 +924,7 @@
       .then(function (data) {
         var r = data.restaurant || {};
         shopName = r.name || "Assistant";
+        sector = SECTEURS[r.secteur] || SECTEURS.restaurant;
         welcome = r.welcome_message || "Bonjour 👋 Comment puis-je vous aider ?";
         el.shopName.textContent = shopName;
         // D1.53: le menu public expose restaurant.primary_color (plat, D1.50)
@@ -929,7 +936,7 @@
       })
       .catch(function () {
         welcome = "";
-        showError("Impossible de charger le restaurant.", null);
+        showError("Impossible de charger l'établissement.", null);
       });
   }
   render();

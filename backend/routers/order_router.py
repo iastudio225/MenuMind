@@ -1,10 +1,11 @@
 from typing import Optional
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from database import db
 from services import order_service as svc
+from services import notifications
 from auth import get_current_user, require_roles, tenant_id_of
 from models import (serialize, RESTAURANT_OWNER, RESTAURANT_MANAGER, RESTAURANT_STAFF)
 
@@ -23,6 +24,8 @@ class CustomerInfo(BaseModel):
     phone: str = Field(min_length=3)
     email: Optional[str] = ""
     address: Optional[str] = ""
+    pickup_address: Optional[str] = ""
+    dropoff_address: Optional[str] = ""
 
 
 class PlaceOrderBody(BaseModel):
@@ -47,8 +50,12 @@ def _public_order_view(o: dict) -> dict:
         "subtotal": o["subtotal"], "delivery_fee": o["delivery_fee"], "total": o["total"],
         "items": [{"name": it["item_name_snapshot"], "quantity": it["quantity"],
                    "unit_price": it["unit_price_snapshot"], "line_total": it["line_total"],
+                   "booking": it.get("booking") or {},
                    "options": [op["option_name_snapshot"] for op in it.get("options", [])]} for it in o["items"]],
-        "delivery_address": o.get("delivery_address", ""), "delivery_zone_name": o.get("delivery_zone_name"),
+        "delivery_address": o.get("delivery_address", ""),
+        "pickup_address": o.get("pickup_address", ""),
+        "dropoff_address": o.get("dropoff_address", ""),
+        "delivery_zone_name": o.get("delivery_zone_name"),
         "customer_name": f"{o['customer_snapshot'].get('first_name','')} {o['customer_snapshot'].get('last_name','')}".strip(),
         "created_at": o["created_at"], "tracking_token": o.get("tracking_token"),
     }
@@ -56,13 +63,17 @@ def _public_order_view(o: dict) -> dict:
 
 # ================= PUBLIC =================
 @public_router.post("")
-async def place_order(body: PlaceOrderBody, idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key")):
+async def place_order(body: PlaceOrderBody, background_tasks: BackgroundTasks,
+                      idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key")):
     cart = await svc.get_cart(db, body.cart_id)
     rid = cart["restaurant_id"]
     order = await svc.create_order(
         db, rid, cart, body.customer.model_dump(), body.order_type,
         delivery_zone_id=body.delivery_zone_id, customer_note=body.customer_note or "",
         idempotency_key=idempotency_key, created_by=None)
+    restaurant = await svc.get_restaurant(db, rid)
+    background_tasks.add_task(notifications.dispatch, db, restaurant, "order.created",
+                              notifications.order_event_payload(order))
     return _public_order_view(order)
 
 
@@ -113,12 +124,28 @@ async def get_order(order_id: str, user: dict = Depends(OPERATE)):
 
 
 @router.patch("/{order_id}/status")
-async def change_status(order_id: str, body: StatusBody, user: dict = Depends(OPERATE)):
+async def change_status(order_id: str, body: StatusBody, background_tasks: BackgroundTasks,
+                        user: dict = Depends(OPERATE)):
     rid = tenant_id_of(user)
-    return await svc.update_order_status(db, rid, order_id, body.status, changed_by=user["_id"])
+    before = await svc.get_order(db, rid, order_id)
+    order = await svc.update_order_status(db, rid, order_id, body.status, changed_by=user["_id"])
+    restaurant = await svc.get_restaurant(db, rid)
+    background_tasks.add_task(notifications.dispatch, db, restaurant, "order.status_changed", {
+        "old_status": before.get("status"),
+        "new_status": order.get("status"),
+        "order": notifications.order_event_payload(order),
+    })
+    return order
 
 
 @router.post("/{order_id}/cancel")
-async def cancel(order_id: str, body: CancelBody, user: dict = Depends(MANAGE)):
+async def cancel(order_id: str, body: CancelBody, background_tasks: BackgroundTasks,
+                 user: dict = Depends(MANAGE)):
     rid = tenant_id_of(user)
-    return await svc.cancel_order(db, rid, order_id, body.reason or "", cancelled_by=user["_id"])
+    order = await svc.cancel_order(db, rid, order_id, body.reason or "", cancelled_by=user["_id"])
+    restaurant = await svc.get_restaurant(db, rid)
+    background_tasks.add_task(notifications.dispatch, db, restaurant, "order.cancelled", {
+        "reason": body.reason or "",
+        "order": notifications.order_event_payload(order),
+    })
+    return order

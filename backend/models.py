@@ -13,6 +13,24 @@ RESTAURANT_STAFF = "RESTAURANT_STAFF"
 RESTAURANT_ROLES = [RESTAURANT_OWNER, RESTAURANT_MANAGER, RESTAURANT_STAFF]
 ALL_ROLES = [SUPER_ADMIN] + RESTAURANT_ROLES
 
+# ---- Secteurs d'activité (extensible par ajout dans cette liste) ----
+SECTEUR_RESTAURANT = "restaurant"
+SECTEUR_LOGISTIQUE = "logistique"
+SECTEUR_ECOMMERCE = "e-commerce"
+SECTEURS = (SECTEUR_RESTAURANT, SECTEUR_LOGISTIQUE, SECTEUR_ECOMMERCE)
+
+
+def normalize_secteur(value: Optional[str]) -> str:
+    """Retourne un secteur valide ; tout inconnu retombe sur 'restaurant'."""
+    return value if value in SECTEURS else SECTEUR_RESTAURANT
+
+
+def validate_secteur(value: Optional[str]) -> Optional[str]:
+    """Validation stricte pour les mises à jour : rejette un secteur inconnu."""
+    if value is not None and value not in SECTEURS:
+        raise ValueError(f"Secteur invalide. Valeurs autorisées : {', '.join(SECTEURS)}")
+    return value
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -41,6 +59,12 @@ class RegisterBody(BaseModel):
     password: str = Field(min_length=6)
     restaurant_name: str = Field(min_length=1)
     phone: Optional[str] = ""
+    secteur: Optional[str] = "restaurant"
+
+    @field_validator("secteur")
+    @classmethod
+    def _secteur_valide(cls, value):
+        return validate_secteur(value)
 
 
 class LoginBody(BaseModel):
@@ -60,6 +84,7 @@ class ResetPasswordBody(BaseModel):
 class RestaurantUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    secteur: Optional[str] = None
     logo: Optional[str] = None
     phone: Optional[str] = None
     whatsapp: Optional[str] = None
@@ -71,7 +96,13 @@ class RestaurantUpdate(BaseModel):
     timezone: Optional[str] = None
     opening_hours: Optional[Dict[str, Any]] = None
     widget: Optional[Dict[str, Any]] = None
+    notifications: Optional[Dict[str, Any]] = None
     onboarding_completed: Optional[bool] = None
+
+    @field_validator("secteur")
+    @classmethod
+    def _secteur_valide(cls, value):
+        return validate_secteur(value)
 
 
 class UserCreate(BaseModel):
@@ -93,6 +124,12 @@ class AdminRestaurantCreate(BaseModel):
     owner_email: EmailStr
     owner_password: str = Field(min_length=6)
     plan: Optional[str] = "STARTER"
+    secteur: Optional[str] = "restaurant"
+
+    @field_validator("secteur")
+    @classmethod
+    def _secteur_valide(cls, value):
+        return validate_secteur(value)
 
 
 class RestaurantStatusUpdate(BaseModel):
@@ -102,6 +139,7 @@ class RestaurantStatusUpdate(BaseModel):
 class AdminRestaurantUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    secteur: Optional[str] = None
     phone: Optional[str] = None
     whatsapp: Optional[str] = None
     email: Optional[str] = None
@@ -110,6 +148,11 @@ class AdminRestaurantUpdate(BaseModel):
     plan: Optional[str] = None
     plan_activated_at: Optional[str] = None  # ISO date, null = non définie
     plan_expires_at: Optional[str] = None  # ISO date, null = sans expiration
+
+    @field_validator("secteur")
+    @classmethod
+    def _secteur_valide(cls, value):
+        return validate_secteur(value)
 
 
 class UserPasswordUpdate(BaseModel):

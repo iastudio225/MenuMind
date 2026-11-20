@@ -8,6 +8,7 @@ import { Loader2, Check, Store, MapPin, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatApiErrorDetail } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 
 const STEPS = [
   { key: "identity", label: "Identité", icon: Store },
@@ -32,6 +33,7 @@ export default function Onboarding() {
         phone: data.phone || "", whatsapp: data.whatsapp || "", email: data.email || "",
         address: data.address || "", city: data.city || "Abidjan", country: data.country || "Côte d'Ivoire",
         currency: data.currency || "FCFA", timezone: data.timezone || "Africa/Abidjan",
+        secteur: data.secteur || "restaurant",
       });
     }).catch(() => navigate("/dashboard"));
   }, [navigate]);
@@ -42,7 +44,7 @@ export default function Onboarding() {
     setLoading(true);
     try {
       await api.patch("/restaurants/me", { ...form, onboarding_completed: true });
-      toast.success("Restaurant configuré avec succès !");
+      toast.success("Établissement configuré avec succès !");
       navigate("/dashboard");
     } catch (err) {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
@@ -55,10 +57,12 @@ export default function Onboarding() {
     return <div className="min-h-screen grid place-items-center"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
   }
 
+  const secteur = secteurConfig(form.secteur);
+
   return (
     <div className="min-h-screen bg-background py-10 px-4">
       <div className="max-w-2xl mx-auto">
-        <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-center">Configurez votre restaurant</h1>
+        <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-center">Configurez votre {secteur.businessNoun}</h1>
         <p className="text-muted-foreground text-center mt-2 text-sm">Ces informations seront utilisées par votre agent IA.</p>
 
         {/* Stepper */}
@@ -80,7 +84,7 @@ export default function Onboarding() {
           {step === 0 && (
             <>
               <div className="space-y-2">
-                <Label>Nom du restaurant</Label>
+                <Label>{secteur.businessLabel}</Label>
                 <Input value={form.name} onChange={set("name")} data-testid="onboarding-name-input" />
               </div>
               <div className="space-y-2">

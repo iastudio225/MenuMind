@@ -3,9 +3,10 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Plus, Loader2, CheckCircle2, Bot, MessageSquare, UtensilsCrossed } from "lucide-react";
+import { ShoppingCart, Plus, Loader2, CheckCircle2, Bot, MessageSquare, UtensilsCrossed, Truck, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import StoreChatWidget from "@/components/StoreChatWidget";
 import ItemOptionModal from "@/components/store/ItemOptionModal";
 import CheckoutDialog from "@/components/store/CheckoutDialog";
@@ -178,13 +179,15 @@ export default function StoreFront() {
     });
   };
 
-  const addToCart = async (item, optionIds, qty) => {
+  const addToCart = async (item, optionIds, qty, booking) => {
     let cid = null;
     try {
       cid = await ensureCart();
-      const { data } = await axios.post(`${API}/public/cart/${cid}/items`, { item_id: item.id, quantity: qty, option_ids: optionIds });
+      const payload = { item_id: item.id, quantity: qty, option_ids: optionIds };
+      if (booking) payload.booking = booking;
+      const { data } = await axios.post(`${API}/public/cart/${cid}/items`, payload);
       applyCart(data, cid);
-      toast.success(`${item.name} ajouté au panier`);
+      toast.success(`${item.name} ajouté au ${secteurConfig(menu?.restaurant?.secteur).cartLabel.toLowerCase()}`);
       setItemModal(null);
     } catch (e) { handleCartMutationError(e, cid || cartIdRef.current); }
   };
@@ -205,8 +208,10 @@ export default function StoreFront() {
   };
 
   if (loading) return <div className="min-h-screen grid place-items-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  if (!menu) return <div className="min-h-screen grid place-items-center text-muted-foreground">Restaurant introuvable</div>;
+  if (!menu) return <div className="min-h-screen grid place-items-center text-muted-foreground">Établissement introuvable</div>;
 
+  const secteur = secteurConfig(menu.restaurant.secteur);
+  const CatalogueIcon = secteur.value === "logistique" ? Truck : secteur.value === "e-commerce" ? ShoppingBag : UtensilsCrossed;
   const itemCount = cart?.items?.reduce((s, i) => s + i.quantity, 0) || 0;
   // D1.52: thème widget — accent visuel du store, jamais une donnée privée
   // (primary_color provient du menu public depuis D1.50).
@@ -223,12 +228,12 @@ export default function StoreFront() {
           </span>
           <div>
             <h1 className="font-heading text-xl font-bold" data-testid="store-name">{menu.restaurant.name}</h1>
-            <p className="text-xs text-white/70">{menu.restaurant.welcome_message || "Commandez en ligne"}</p>
+            <p className="text-xs text-white/70">{menu.restaurant.welcome_message || secteur.ctaLabel}</p>
           </div>
         </div>
       </header>
 
-      {/* Onglet Menu — cartes produits avec images */}
+      {/* Onglet Catalogue — cartes produits avec images */}
       <div className={activeTab === "menu" ? "flex-1 overflow-y-auto" : "hidden"}>
         <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
           {menu.categories.map((cat) => (
@@ -246,10 +251,10 @@ export default function StoreFront() {
                         {it.description && <p className="text-sm text-muted-foreground line-clamp-2">{it.description}</p>}
                         <p className="font-mono text-sm font-semibold mt-1">{formatFCFA(it.price)}</p>
                       </div>
-                      {it.available ? (
+                      {it.available && it.in_stock !== false ? (
                         <Button size="sm" className="shrink-0" style={accentStyle} onClick={() => setItemModal(it)} data-testid={`store-add-${it.id}`}><Plus className="w-4 h-4" /></Button>
                       ) : (
-                        <span className="text-xs text-red-500 font-medium shrink-0">Indisponible</span>
+                        <span className="text-xs text-red-500 font-medium shrink-0">{it.in_stock === false ? "Rupture" : "Indisponible"}</span>
                       )}
                     </div>
                   </div>
@@ -260,12 +265,12 @@ export default function StoreFront() {
         </main>
       </div>
 
-      {/* Onglet Panier — vue synthèse; le checkout reste le parcours classique */}
+      {/* Onglet Panier/Demande — vue synthèse; le checkout reste le parcours classique */}
       <div className={activeTab === "cart" ? "flex-1 overflow-y-auto" : "hidden"}>
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4" data-testid="cart-tab">
-          <h2 className="font-heading text-lg font-semibold">Votre panier</h2>
+          <h2 className="font-heading text-lg font-semibold">Votre {secteur.cartLabel.toLowerCase()}</h2>
           {!cart?.items?.length ? (
-            <p className="text-sm text-muted-foreground" data-testid="cart-tab-empty">Votre panier est vide. Ajoutez des plats depuis le menu.</p>
+            <p className="text-sm text-muted-foreground" data-testid="cart-tab-empty">{secteur.emptyCartText}</p>
           ) : (
             <>
               <div className="space-y-3 rounded-xl border border-border bg-card p-4">
@@ -278,7 +283,7 @@ export default function StoreFront() {
                 <span className="font-mono" data-testid="cart-tab-subtotal">{formatFCFA(cart?.subtotal || 0)}</span>
               </div>
               <Button className="w-full" onClick={() => setCheckout(true)} data-testid="open-cart-btn">
-                <ShoppingCart className="w-4 h-4 mr-1" /> Voir le panier
+                <ShoppingCart className="w-4 h-4 mr-1" /> {secteur.cartViewLabel}
               </Button>
             </>
           )}
@@ -291,6 +296,7 @@ export default function StoreFront() {
         <StoreChatWidget
           embedded
           restaurantPublicId={publicId}
+          secteur={secteur.value}
           welcomeMessage={menu.restaurant.welcome_message || ""}
           cartId={cartId}
           conversationId={conversationId}
@@ -322,8 +328,8 @@ export default function StoreFront() {
       <nav className="shrink-0 border-t border-border bg-card" data-testid="store-tabs">
         <div className="max-w-3xl mx-auto grid grid-cols-3">
           {[
-            ["menu", "Menu", <UtensilsCrossed key="i" className="w-5 h-5" />, null],
-            ["cart", "Panier", <ShoppingCart key="i" className="w-5 h-5" />, itemCount > 0 ? itemCount : null],
+            ["menu", secteur.catalogueLabel, <CatalogueIcon key="i" className="w-5 h-5" />, null],
+            ["cart", secteur.cartLabel, <ShoppingCart key="i" className="w-5 h-5" />, itemCount > 0 ? itemCount : null],
             ["chat", "Assistant", <MessageSquare key="i" className="w-5 h-5" />, null],
           ].map(([id, label, icon, badge]) => (
             <button
@@ -355,6 +361,7 @@ export default function StoreFront() {
       {/* Checkout */}
       {checkout && (
         <CheckoutDialog open={checkout} onOpenChange={setCheckout} cart={cart} cartId={cartId} zones={zones}
+          secteur={secteur.value}
           onChangeQty={changeQty} onRemove={removeLine}
           onConfirmed={(o) => { setConfirmed(o); clearSession(); setActiveTab("menu"); }}
           onCartInvalid={clearSession} />
@@ -373,7 +380,7 @@ export default function StoreFront() {
             <p className="text-muted-foreground mt-2 text-sm">Votre numéro de commande est</p>
             <p className="font-mono text-2xl font-bold my-2" data-testid="confirmed-reference">{confirmed?.reference}</p>
             <p className="text-lg font-semibold">Total : {formatFCFA(confirmed?.total)}</p>
-            <p className="text-sm text-muted-foreground mt-3">Le restaurant prépare votre commande. 🍽️</p>
+            <p className="text-sm text-muted-foreground mt-3">{secteur.confirmationText}</p>
           </div>
         </DialogContent>
       </Dialog>
