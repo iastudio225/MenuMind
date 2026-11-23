@@ -11,8 +11,6 @@ import ItemOptionModal from "@/components/store/ItemOptionModal";
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const FALLBACK_WELCOME = "Bonjour 👋 Je suis votre assistant. Comment puis-je vous aider ?";
 
-const ORDER_TYPE_LABELS = { DELIVERY: "Livraison", PICKUP: "À emporter" };
-
 export default function StoreChatWidget({
   restaurantPublicId,
   welcomeMessage,
@@ -307,10 +305,10 @@ export default function StoreChatWidget({
                             <span className="font-mono">{formatFCFA(m.cart.delivery_fee)}</span>
                           </div>
                         )}
-                        {m.cart.order_type && ORDER_TYPE_LABELS[m.cart.order_type] && (
+                        {m.cart.order_type && sector.orderTypeLabels?.[m.cart.order_type] && (
                           <div className="flex justify-between text-muted-foreground">
                             <span>Mode</span>
-                            <span>{ORDER_TYPE_LABELS[m.cart.order_type]}</span>
+                            <span>{sector.orderTypeLabels[m.cart.order_type]}</span>
                           </div>
                         )}
                         <div className="flex justify-between font-semibold text-sm text-foreground">

@@ -42,7 +42,7 @@ export default function StoreFront() {
       axios.get(`${API}/public/menu/${publicId}`),
       axios.get(`${API}/public/delivery-zones/${publicId}`),
     ]).then(([m, z]) => { setMenu(m.data); setZones(z.data); })
-      .catch(() => toast.error("Restaurant introuvable"))
+      .catch(() => toast.error("Établissement introuvable"))
       .finally(() => setLoading(false));
   }, [publicId]);
 

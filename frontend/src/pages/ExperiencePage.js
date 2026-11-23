@@ -128,12 +128,12 @@ export default function ExperiencePage() {
           clearStoredSession(publicId);
           setConversationId(null);
         } else {
-          toast.error("Impossible de restaurer votre panier. Vérifiez votre connexion.");
+          toast.error(`Impossible de restaurer votre ${secteurConfig(restaurant?.secteur).cartLabel.toLowerCase()}. Vérifiez votre connexion.`);
         }
       }
     }).catch((error) => {
       if (!alive || publicIdRef.current !== publicId) return;
-      setLoadError(formatApiErrorDetail(error.response?.data?.detail) || "Restaurant introuvable.");
+      setLoadError(formatApiErrorDetail(error.response?.data?.detail) || "Établissement introuvable.");
     }).finally(() => {
       if (alive && publicIdRef.current === publicId) setLoading(false);
     });
@@ -208,7 +208,7 @@ export default function ExperiencePage() {
       const { data } = await axios.post(`${API}/public/cart/${encodeURIComponent(id)}/items`, payload);
       applyCart(data, id);
       setSelectedItem(null);
-      toast.success(`${item.name} ajouté au panier`);
+      toast.success(`${item.name} ajouté au ${secteurConfig(restaurant?.secteur).cartLabel.toLowerCase()}`);
     } catch (error) {
       await handleCartError(error, id || cartIdRef.current);
     }
@@ -291,7 +291,7 @@ export default function ExperiencePage() {
                 <h1>{restaurant.name}</h1>
               </div>
             </div>
-            <button className="experience-header-cart" onClick={() => setActiveView("cart")} aria-label={`Ouvrir le panier, ${itemCount} article${itemCount === 1 ? "" : "s"}`}>
+            <button className="experience-header-cart" onClick={() => setActiveView("cart")} aria-label={`Ouvrir ${sector.cartLabel.toLowerCase()}, ${itemCount} article${itemCount === 1 ? "" : "s"}`}>
               <ShoppingBag aria-hidden="true" />
               {itemCount > 0 && <span>{itemCount}</span>}
             </button>
@@ -312,7 +312,7 @@ export default function ExperiencePage() {
                 </div>
                 {featuredItems.length > 0 && (
                   <div className="experience-featured">
-                    <div className="experience-section-heading"><div><p className="experience-eyebrow">À DÉCOUVRIR</p><h2>Nos suggestions</h2></div><button onClick={() => setActiveView("menu")}>Tout le menu <ChevronRight aria-hidden="true" /></button></div>
+                    <div className="experience-section-heading"><div><p className="experience-eyebrow">À DÉCOUVRIR</p><h2>Nos suggestions</h2></div><button onClick={() => setActiveView("menu")}>Tout {sector.value === "restaurant" ? "le menu" : "le catalogue"} <ChevronRight aria-hidden="true" /></button></div>
                     <div className="experience-featured-list">
                       {featuredItems.map((item) => <ProductCard key={item.id} item={item} onSelect={setSelectedItem} />)}
                     </div>
@@ -374,7 +374,7 @@ export default function ExperiencePage() {
             <NavButton active={activeView === "chat"} label="Assistant" onClick={() => setActiveView("chat")}><MessageCircle aria-hidden="true" /></NavButton>
             <NavButton active={activeView === "cart"} label={sector.cartLabel} count={itemCount} onClick={() => setActiveView("cart")}><ShoppingBag aria-hidden="true" /></NavButton>
           </nav>
-          {order && <OrderConfirmation order={order} onContinue={() => { setOrder(null); setActiveView("menu"); }} />}
+          {order && <OrderConfirmation order={order} sector={sector} onContinue={() => { setOrder(null); setActiveView("menu"); }} />}
         </div>
       </div>
 
@@ -407,15 +407,16 @@ function NavButton({ active, label, count, onClick, children }) {
   </button>;
 }
 
-function OrderConfirmation({ order, onContinue }) {
-  const statusLabels = { PENDING: "En attente de prise en charge", CONFIRMED: "Confirmée", PREPARING: "En préparation", READY: "Prête", OUT_FOR_DELIVERY: "En livraison", COMPLETED: "Terminée" };
+function OrderConfirmation({ order, sector, onContinue }) {
+  const statusLabels = sector?.statusLabels || {};
+  const orderNoun = sector?.orderNoun || "commande";
   return <div className="experience-confirmation-backdrop"><section className="experience-confirmation" role="status" aria-live="polite" data-testid="experience-order-confirmation">
-    <span className="experience-confirmation-check"><Check aria-hidden="true" /></span><p className="experience-eyebrow">COMMANDE ENREGISTRÉE</p><h2>Merci pour votre commande !</h2>
+    <span className="experience-confirmation-check"><Check aria-hidden="true" /></span><p className="experience-eyebrow">{orderNoun.toUpperCase()} ENREGISTRÉE</p><h2>Merci pour votre {orderNoun} !</h2>
     <p className="experience-confirmation-copy">Votre établissement a bien reçu votre demande.</p>
-    <div className="experience-order-reference"><span>Numéro de commande</span><strong data-testid="experience-order-reference">{order.reference}</strong></div>
+    <div className="experience-order-reference"><span>Numéro de {orderNoun}</span><strong data-testid="experience-order-reference">{order.reference}</strong></div>
     <div className="experience-order-total"><span>Total</span><strong>{formatFCFA(order.total)}</strong></div>
     <div className="experience-order-status"><Clock3 aria-hidden="true" /><span>{statusLabels[order.status] || order.status}</span></div>
-    {order.tracking_token && <p className="experience-tracking-note">Conservez votre numéro de commande pour vos échanges avec l'établissement.</p>}
+    {order.tracking_token && <p className="experience-tracking-note">Conservez votre numéro de {orderNoun} pour vos échanges avec l'établissement.</p>}
     <Button className="experience-confirmation-button" onClick={onContinue}>Retour à l'établissement</Button>
   </section></div>;
 }

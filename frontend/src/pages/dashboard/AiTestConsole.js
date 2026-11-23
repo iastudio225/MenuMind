@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import api from "@/lib/api";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
-
-const ORDER_TYPE_LABELS = { DELIVERY: "Livraison", PICKUP: "À emporter" };
+import { secteurConfig } from "@/lib/secteurs";
 
 export default function AiTestConsole() {
   const [restaurant, setRestaurant] = useState(null);
+  const sector = secteurConfig(restaurant?.secteur);
   const [messages, setMessages] = useState([]); // {role: "user"|"assistant", content, cart?}
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState(null);
@@ -73,7 +73,7 @@ export default function AiTestConsole() {
           className="font-heading text-2xl sm:text-3xl font-bold tracking-tight"
           data-testid="ai-console-title"
         >
-          Réceptionniste IA
+          {sector.value === "restaurant" ? "Réceptionniste IA" : "Assistant IA"}
         </h1>
         <span
           className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary"
@@ -83,7 +83,7 @@ export default function AiTestConsole() {
         </span>
       </div>
       <p className="mt-2 text-sm text-muted-foreground" data-testid="ai-console-description">
-        Échangez directement avec votre agent de commande pour vérifier ses réponses.
+        Échangez directement avec votre assistant IA pour vérifier ses réponses.
         Ce canal est réservé à vos tests — les conversations de vos clients restent séparées.
       </p>
       {restaurant && (
@@ -100,8 +100,8 @@ export default function AiTestConsole() {
               <Bot className="w-5 h-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">Votre réceptionniste</p>
-              <p className="text-xs text-white/70">Mode test — utilise le menu réel</p>
+              <p className="text-sm font-semibold truncate">{sector.value === "restaurant" ? "Votre réceptionniste" : "Votre assistant IA"}</p>
+              <p className="text-xs text-white/70">Mode test — utilise {sector.value === "restaurant" ? "le menu réel" : "le catalogue réel"}</p>
             </div>
           </div>
           <Button
@@ -152,7 +152,7 @@ export default function AiTestConsole() {
                     data-testid="ai-cart-card"
                   >
                     <p className="flex items-center gap-1.5 font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                      <ShoppingCart className="w-3.5 h-3.5" /> Panier généré par l'agent
+                      <ShoppingCart className="w-3.5 h-3.5" /> {sector.cartGeneratedLabel}
                     </p>
                     <div className="mt-2 space-y-1">
                       {m.cart.items.map((line) => (
@@ -176,10 +176,10 @@ export default function AiTestConsole() {
                           <span className="font-mono">{formatFCFA(m.cart.delivery_fee)}</span>
                         </div>
                       )}
-                      {m.cart.order_type && ORDER_TYPE_LABELS[m.cart.order_type] && (
+                      {m.cart.order_type && sector.orderTypeLabels?.[m.cart.order_type] && (
                         <div className="flex justify-between text-muted-foreground">
                           <span>Mode</span>
-                          <span>{ORDER_TYPE_LABELS[m.cart.order_type]}</span>
+                          <span>{sector.orderTypeLabels[m.cart.order_type]}</span>
                         </div>
                       )}
                       <div className="flex justify-between font-semibold text-sm text-foreground">

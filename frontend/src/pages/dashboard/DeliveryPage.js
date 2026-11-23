@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -15,10 +15,14 @@ import { Plus, Pencil, Trash2, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import { useAuth } from "@/context/AuthContext";
+import { DashboardRestaurantContext } from "@/layouts/DashboardLayout";
 
 export default function DeliveryPage() {
   const { user } = useAuth();
+  const restaurant = useContext(DashboardRestaurantContext);
+  const sector = secteurConfig(restaurant?.secteur);
   const canManage = user?.role === "RESTAURANT_OWNER" || user?.role === "RESTAURANT_MANAGER";
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,17 +35,17 @@ export default function DeliveryPage() {
     <div className="max-w-3xl">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="delivery-title">Livraison & Zones</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Définissez vos zones de livraison et leurs frais.</p>
+          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="delivery-title">{sector.deliveryTitle}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{sector.deliverySubtitle}</p>
         </div>
-        {canManage && <ZoneDialog onSaved={load} trigger={<Button data-testid="add-zone-btn"><Plus className="w-4 h-4 mr-1" /> Ajouter une zone</Button>} />}
+        {canManage && <ZoneDialog sector={sector} onSaved={load} trigger={<Button data-testid="add-zone-btn"><Plus className="w-4 h-4 mr-1" /> Ajouter une zone</Button>} />}
       </div>
 
       {loading ? (
         <div className="grid place-items-center py-20"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
       ) : zones.length === 0 ? (
         <div className="bg-card border border-border rounded-2xl p-12 text-center text-muted-foreground" data-testid="zones-empty">
-          <MapPin className="w-8 h-8 mx-auto mb-3 opacity-50" /> Aucune zone de livraison.
+          <MapPin className="w-8 h-8 mx-auto mb-3 opacity-50" /> {sector.zoneEmptyText}
         </div>
       ) : (
         <div className="space-y-3" data-testid="zones-list">
@@ -58,7 +62,7 @@ export default function DeliveryPage() {
                 <span className="font-mono font-semibold">{formatFCFA(z.fee)}</span>
                 {canManage && (
                   <>
-                    <ZoneDialog zone={z} onSaved={load} trigger={<Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`edit-zone-${z.id}`}><Pencil className="w-4 h-4" /></Button>} />
+                    <ZoneDialog sector={sector} zone={z} onSaved={load} trigger={<Button size="icon" variant="ghost" className="h-8 w-8" data-testid={`edit-zone-${z.id}`}><Pencil className="w-4 h-4" /></Button>} />
                     <ConfirmDelete name={z.name} onConfirm={async () => { try { await api.delete(`/delivery/zones/${z.id}`); toast.success("Zone supprimée."); load(); } catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); } }}
                       trigger={<Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" data-testid={`delete-zone-${z.id}`}><Trash2 className="w-4 h-4" /></Button>} />
                   </>
@@ -72,7 +76,7 @@ export default function DeliveryPage() {
   );
 }
 
-function ZoneDialog({ trigger, zone, onSaved }) {
+function ZoneDialog({ trigger, zone, onSaved, sector }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", fee: "", active: true });
@@ -96,11 +100,11 @@ function ZoneDialog({ trigger, zone, onSaved }) {
       <span onClick={() => setOpen(true)}>{trigger}</span>
       <DialogContent data-testid="zone-dialog">
         <DialogHeader><DialogTitle>{zone ? "Modifier la zone" : "Nouvelle zone"}</DialogTitle>
-          <DialogDescription>Ex. Cocody — 1 000 FCFA de frais de livraison.</DialogDescription></DialogHeader>
+          <DialogDescription>{sector?.zoneExample || "Ex. Cocody — 1 000 FCFA de frais."}</DialogDescription></DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2"><Label>Nom de la zone</Label><Input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} data-testid="zone-name-input" /></div>
           <div className="space-y-2"><Label>Description</Label><Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} data-testid="zone-description-input" /></div>
-          <div className="space-y-2"><Label>Frais de livraison (FCFA)</Label><Input type="number" min={0} required value={form.fee} onChange={(e) => setForm((f) => ({ ...f, fee: e.target.value }))} data-testid="zone-fee-input" /></div>
+          <div className="space-y-2"><Label>{sector?.zoneFeeLabel || "Frais (FCFA)"}</Label><Input type="number" min={0} required value={form.fee} onChange={(e) => setForm((f) => ({ ...f, fee: e.target.value }))} data-testid="zone-fee-input" /></div>
           <div className="flex items-center justify-between"><Label>Active</Label><Switch checked={form.active} onCheckedChange={(v) => setForm((f) => ({ ...f, active: v }))} data-testid="zone-active-switch" /></div>
           <DialogFooter><Button type="submit" disabled={saving} data-testid="zone-submit">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}</Button></DialogFooter>
         </form>

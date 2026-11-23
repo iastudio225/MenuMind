@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -9,8 +9,12 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
+import { DashboardRestaurantContext } from "@/layouts/DashboardLayout";
 
 export default function CustomersPage() {
+  const restaurant = useContext(DashboardRestaurantContext);
+  const sector = secteurConfig(restaurant?.secteur);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -41,7 +45,7 @@ export default function CustomersPage() {
     <div className="max-w-5xl">
       <div className="mb-6">
         <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="customers-title">Clients</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Base clients de votre restaurant et historique de commandes.</p>
+        <p className="text-muted-foreground mt-1 text-sm">Base clients de votre {sector.dashboardNoun} et historique de {sector.ordersLabel.toLowerCase()}.</p>
       </div>
 
       <div className="relative mb-5 max-w-sm">
@@ -64,7 +68,7 @@ export default function CustomersPage() {
                 <tr>
                   <th className="text-left font-medium px-5 py-3">Client</th>
                   <th className="text-left font-medium px-5 py-3">Téléphone</th>
-                  <th className="text-right font-medium px-5 py-3">Commandes</th>
+                  <th className="text-right font-medium px-5 py-3">{sector.ordersLabel}</th>
                   <th className="text-right font-medium px-5 py-3">Total dépensé</th>
                 </tr>
               </thead>
@@ -107,7 +111,7 @@ export default function CustomersPage() {
               <div className="flex gap-4 mb-2">
                 <div className="flex-1 rounded-xl bg-secondary/50 p-3 text-center">
                   <p className="text-2xl font-bold font-heading">{detail.orders_count}</p>
-                  <p className="text-xs text-muted-foreground">commandes</p>
+                  <p className="text-xs text-muted-foreground">{sector.ordersLabel.toLowerCase()}</p>
                 </div>
                 <div className="flex-1 rounded-xl bg-secondary/50 p-3 text-center">
                   <p className="text-2xl font-bold font-heading">{formatFCFA(detail.total_spent)}</p>
@@ -116,7 +120,7 @@ export default function CustomersPage() {
               </div>
               <h3 className="font-semibold text-sm flex items-center gap-2 mt-2"><ShoppingBag className="w-4 h-4" /> Historique</h3>
               <div className="space-y-2">
-                {(detail.orders || []).length === 0 && <p className="text-sm text-muted-foreground">Aucune commande.</p>}
+                {(detail.orders || []).length === 0 && <p className="text-sm text-muted-foreground">Aucune {sector.orderNoun}.</p>}
                 {(detail.orders || []).map((o) => (
                   <div key={o.id} className="flex justify-between items-center text-sm border border-border rounded-lg px-3 py-2">
                     <div>
@@ -124,7 +128,7 @@ export default function CustomersPage() {
                       <span className="text-muted-foreground ml-2">{new Date(o.created_at).toLocaleDateString("fr-FR")}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{o.status}</Badge>
+                      <Badge variant="secondary">{sector.statusLabels?.[o.status] || o.status}</Badge>
                       <span className="font-mono">{formatFCFA(o.total)}</span>
                     </div>
                   </div>
