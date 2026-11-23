@@ -193,12 +193,23 @@ export default function OrdersPage() {
                   {detail.customer_note && <p className="text-sm italic mt-2">« {detail.customer_note} »</p>}
                 </div>
 
+                {sector.value === "logistique" && (detail.pickup_address || detail.dropoff_address) && (
+                  <div className="rounded-xl bg-secondary/50 p-4 text-sm" data-testid="order-trip">
+                    <p className="font-semibold flex items-center gap-2"><Truck className="w-4 h-4" /> Trajet</p>
+                    <p className="mt-1"><span className="text-muted-foreground">Ramassage :</span> {detail.pickup_address || "—"}</p>
+                    <p><span className="text-muted-foreground">Livraison :</span> {detail.dropoff_address || detail.delivery_address || "—"}</p>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   {detail.items.map((it, i) => (
                     <div key={i} className="flex justify-between text-sm" data-testid={`detail-item-${i}`}>
                       <div>
                         <span className="font-medium">{it.quantity} × {it.item_name_snapshot}</span>
                         {it.options?.length > 0 && <span className="text-muted-foreground"> — {it.options.map((o) => o.option_name_snapshot).join(", ")}</span>}
+                        {it.variant_sku_snapshot && <span className="text-xs text-muted-foreground ml-2">SKU {it.variant_sku_snapshot}</span>}
+                        {it.booking?.distance_km ? <span className="text-xs text-muted-foreground ml-2">· {it.booking.distance_km} km</span> : null}
+                        {it.booking?.weight_kg ? <span className="text-xs text-muted-foreground ml-2">· {it.booking.weight_kg} kg</span> : null}
                       </div>
                       <span className="font-mono">{formatFCFA(it.line_total)}</span>
                     </div>

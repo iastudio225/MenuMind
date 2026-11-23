@@ -5,6 +5,7 @@ import {
   Users as UsersIcon, Sparkles, ArrowRight, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import api from "@/lib/api";
 import { formatFCFA } from "@/lib/format";
 import { secteurConfig } from "@/lib/secteurs";
@@ -32,6 +33,8 @@ function StatCard({ icon: Icon, label, value, hint, tone = "neutral", testid }) 
 export default function Overview() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [missions, setMissions] = useState([]);
+  const [stockAlerts, setStockAlerts] = useState(null);
   const restaurant = useContext(DashboardRestaurantContext);
   const sector = secteurConfig(restaurant?.secteur);
   const PreparingIcon = sector.value === "logistique" ? Truck : sector.value === "e-commerce" ? ShoppingBag : ChefHat;
@@ -39,6 +42,15 @@ export default function Overview() {
   useEffect(() => {
     api.get("/dashboard/overview").then(({ data }) => setStats(data)).catch(() => setStats({}));
   }, []);
+
+  useEffect(() => {
+    if (!restaurant) return;
+    if (sector.value === "logistique") {
+      api.get("/dashboard/missions").then(({ data }) => setMissions(data.missions || [])).catch(() => setMissions([]));
+    } else if (sector.value === "e-commerce") {
+      api.get("/dashboard/stock-alerts").then(({ data }) => setStockAlerts(data)).catch(() => setStockAlerts(null));
+    }
+  }, [restaurant, sector.value]);
 
   if (!stats) {
     return <div className="grid place-items-center py-20"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
@@ -83,6 +95,64 @@ export default function Overview() {
         <StatCard icon={PreparingIcon} label={sector.preparingLabel} value={stats.preparing ?? 0} hint={sector.preparingHint} tone="neutral" testid="stat-preparing" />
         <StatCard icon={Wallet} label={sector.avgBasketLabel} value={formatFCFA(stats.avg_basket)} tone="positive" testid="stat-avg-basket" />
       </div>
+
+      {sector.value === "logistique" && (
+        <div className="bg-card border border-border rounded-2xl p-6 mt-5" data-testid="overview-missions">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2"><Truck className="w-4 h-4 text-primary" /> Missions en cours</h3>
+            <Link to="/dashboard/orders" className="text-sm text-primary font-medium">Tout voir →</Link>
+          </div>
+          {missions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune mission active.</p>
+          ) : (
+            <div className="space-y-2">
+              {missions.slice(0, 5).map((m) => (
+                <Link key={m.id} to="/dashboard/orders" className="block rounded-xl border border-border px-4 py-3 hover:bg-secondary/30">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-sm font-medium">{m.reference}</span>
+                    <Badge variant="secondary">{sector.statusLabels[m.status] || m.status}</Badge>
+                  </div>
+                  <p className="text-sm mt-1">{m.customer_name || "Client"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {m.pickup_address || "—"} → {m.dropoff_address || "—"}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {sector.value === "e-commerce" && (
+        <div className="bg-card border border-border rounded-2xl p-6 mt-5" data-testid="overview-stock-alerts">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2"><ShoppingBag className="w-4 h-4 text-primary" /> Alertes stock</h3>
+            <Link to="/dashboard/menu" className="text-sm text-primary font-medium">Gérer →</Link>
+          </div>
+          {!stockAlerts || !stockAlerts.alerts?.length ? (
+            <p className="text-sm text-muted-foreground">Aucune alerte : tous les stocks sont suffisants.</p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-3">
+                {stockAlerts.summary.out} rupture(s) · {stockAlerts.summary.low} stock(s) bas (seuil {stockAlerts.threshold})
+              </p>
+              <div className="space-y-2">
+                {stockAlerts.alerts.slice(0, 6).map((a) => (
+                  <div key={`${a.kind}-${a.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{a.name}{a.sku ? ` · ${a.sku}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">{a.kind === "variant" ? "Variante" : a.kind === "option" ? "Option" : "Article"}</p>
+                    </div>
+                    <Badge variant={a.status === "out" ? "destructive" : "secondary"}>
+                      {a.status === "out" ? "Rupture" : `Stock ${a.stock}`}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
         <div className="bg-card border border-border rounded-2xl p-6">
