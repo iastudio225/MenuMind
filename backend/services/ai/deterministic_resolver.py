@@ -6,6 +6,8 @@ existing AI agent remains the fallback for free-form conversation.
 import re
 import unicodedata
 
+from services.ai.vocabulary import sector_vocab
+
 
 def _normalize(value: str) -> str:
     value = unicodedata.normalize("NFKD", str(value or ""))
@@ -103,7 +105,7 @@ def _contact_answer(message: str, restaurant: dict) -> str:
     return "Aucun numéro de contact public n’est renseigné pour le moment."
 
 
-def _cart_answer(cart_view: dict) -> str:
+def _cart_answer(cart_view: dict, vocab: dict) -> str:
     lines = []
     for item in cart_view.get("items", []):
         name = str(item.get("name") or "Article")
@@ -116,15 +118,15 @@ def _cart_answer(cart_view: dict) -> str:
             line += f" — {amount}"
         lines.append(line)
     if not lines:
-        return "Votre panier est vide pour le moment."
+        return f"Votre {vocab['cart']} est vide pour le moment."
     total = _format_fcfa(cart_view.get("total"))
     subtotal = _format_fcfa(cart_view.get("subtotal"))
     delivery = _format_fcfa(cart_view.get("delivery_fee"))
-    summary = "Votre panier :\n" + "\n".join(lines)
+    summary = f"Votre {vocab['cart']} :\n" + "\n".join(lines)
     if subtotal:
         summary += f"\nSous-total : {subtotal}"
     if delivery and int(cart_view.get("delivery_fee") or 0):
-        summary += f"\nLivraison : {delivery}"
+        summary += f"\n{vocab['delivery_fee_label']} : {delivery}"
     if total:
         summary += f"\nTotal : {total}"
     return summary
@@ -134,7 +136,8 @@ def _contact_intent(text: str):
     address_query = (
         _has(text, "adresse", "localisation")
         and (_has(text, "quelle", "quel", "donne", "indiquer", "situe", "situer", "trouver")
-             or "ou se trouve" in text or "votre adresse" in text or "adresse du restaurant" in text)
+             or "ou se trouve" in text or "votre adresse" in text or "adresse du restaurant" in text
+             or "adresse de l'entreprise" in text or "adresse de la boutique" in text)
     ) or "ou etes vous" in text or "ou se situe" in text
     phone_query = (
         _has(text, "telephone", "numero", "whatsapp", "contact")
@@ -147,10 +150,11 @@ def _contact_intent(text: str):
 def resolve(message: str, restaurant: dict, menu: dict, cart_view: dict):
     """Return a French answer for supported intents, otherwise ``None``."""
     text = _normalize(message)
-    name = str(restaurant.get("name") or "notre restaurant")
+    vocab = sector_vocab(restaurant.get("secteur"))
+    name = str(restaurant.get("name") or f"notre {vocab['business']}")
 
     if text in {"bonjour", "bonsoir", "salut", "coucou"}:
-        return f"Bonjour et bienvenue chez {name} ! Que souhaitez-vous commander ?"
+        return f"Bonjour et bienvenue chez {name} ! {vocab['greeting_question']}"
 
     if (_has(text, "horaire", "horaires", "ouverture", "fermeture")
             or ("quelle heure" in text and _has(text, "ouvrez", "fermez"))
@@ -161,10 +165,10 @@ def resolve(message: str, restaurant: dict, menu: dict, cart_view: dict):
     if wants_address or wants_contact:
         return _contact_answer(message, restaurant)
 
-    if (_has(text, "panier")
+    if (_has(text, "panier", vocab["cart"])
             and (_has(text, "recapitulatif", "resume", "contenu", "total", "voir", "afficher", "montre", "liste")
                  or "combien dans le panier" in text)):
-        return _cart_answer(cart_view or {})
+        return _cart_answer(cart_view or {}, vocab)
 
     asks_price = (_has(text, "prix", "coute", "tarif") or "quel est le prix" in text
                   or (_has(text, "combien") and "combien de" not in text))
