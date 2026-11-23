@@ -30,9 +30,18 @@ function navForSector(sectorValue) {
   const CatalogueIcon = sector.value === "logistique" ? Truck : sector.value === "e-commerce" ? ShoppingBag : UtensilsCrossed;
   return NAV
     .filter((n) => !n.restaurantOnly || sector.value === "restaurant")
-    .map((n) => n.to === "/dashboard/menu"
-      ? { ...n, label: sector.value === "restaurant" ? "Menu & Carte" : sector.catalogueLabel, icon: CatalogueIcon }
-      : n);
+    .map((n) => {
+      if (n.to === "/dashboard/menu") {
+        return { ...n, label: sector.value === "restaurant" ? "Menu & Carte" : sector.catalogueLabel, icon: CatalogueIcon };
+      }
+      if (n.to === "/dashboard/orders") {
+        return { ...n, label: sector.ordersLabel };
+      }
+      if (n.to === "/dashboard/ai") {
+        return { ...n, label: sector.value === "restaurant" ? "Réceptionniste IA" : "Assistant IA" };
+      }
+      return n;
+    });
 }
 
 export default function DashboardLayout() {

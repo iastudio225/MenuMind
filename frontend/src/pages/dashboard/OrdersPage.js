@@ -1,42 +1,42 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useContext } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Clock, ChefHat, CheckCircle2, Truck, PackageCheck, XCircle, Bell, Loader2, RefreshCw,
+  ChefHat, CheckCircle2, Truck, PackageCheck, XCircle, Bell, Loader2, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatFCFA, formatApiErrorDetail } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import { useAuth } from "@/context/AuthContext";
+import { DashboardRestaurantContext } from "@/layouts/DashboardLayout";
 
-const STATUS_META = {
-  PENDING: { label: "En attente", color: "bg-amber-50 text-amber-600", dot: "bg-amber-500" },
-  CONFIRMED: { label: "Confirmée", color: "bg-blue-50 text-blue-600", dot: "bg-blue-500" },
-  PREPARING: { label: "En préparation", color: "bg-indigo-50 text-indigo-600", dot: "bg-indigo-500" },
-  READY: { label: "Prête", color: "bg-emerald-50 text-emerald-600", dot: "bg-emerald-500" },
-  OUT_FOR_DELIVERY: { label: "En livraison", color: "bg-cyan-50 text-cyan-600", dot: "bg-cyan-500" },
-  DELIVERED: { label: "Livrée", color: "bg-green-50 text-green-700", dot: "bg-green-600" },
-  CANCELLED: { label: "Annulée", color: "bg-red-50 text-red-600", dot: "bg-red-500" },
+const STATUS_COLORS = {
+  PENDING: { color: "bg-amber-50 text-amber-600", dot: "bg-amber-500" },
+  CONFIRMED: { color: "bg-blue-50 text-blue-600", dot: "bg-blue-500" },
+  PREPARING: { color: "bg-indigo-50 text-indigo-600", dot: "bg-indigo-500" },
+  READY: { color: "bg-emerald-50 text-emerald-600", dot: "bg-emerald-500" },
+  OUT_FOR_DELIVERY: { color: "bg-cyan-50 text-cyan-600", dot: "bg-cyan-500" },
+  DELIVERED: { color: "bg-green-50 text-green-700", dot: "bg-green-600" },
+  CANCELLED: { color: "bg-red-50 text-red-600", dot: "bg-red-500" },
 };
-const FILTERS = [
-  ["all", "Toutes"], ["PENDING", "En attente"], ["CONFIRMED", "Confirmées"], ["PREPARING", "Préparation"],
-  ["READY", "Prêtes"], ["OUT_FOR_DELIVERY", "Livraison"], ["DELIVERED", "Livrées"], ["CANCELLED", "Annulées"],
-];
-const NEXT_ACTIONS = {
-  PENDING: [["CONFIRMED", "Confirmer", CheckCircle2]],
-  CONFIRMED: [["PREPARING", "Préparer", ChefHat]],
-  PREPARING: [["READY", "Marquer prête", PackageCheck]],
-  READY: [["OUT_FOR_DELIVERY", "Mettre en livraison", Truck], ["DELIVERED", "Marquer livrée", CheckCircle2]],
-  OUT_FOR_DELIVERY: [["DELIVERED", "Marquer livrée", CheckCircle2]],
-};
+const ACTION_ICONS = { check: CheckCircle2, chef: ChefHat, package: PackageCheck, truck: Truck };
 
 export default function OrdersPage() {
   const { user } = useAuth();
+  const restaurant = useContext(DashboardRestaurantContext);
+  const sector = secteurConfig(restaurant?.secteur);
   const canCancel = user?.role === "RESTAURANT_OWNER" || user?.role === "RESTAURANT_MANAGER";
+  const statusMeta = (status) => ({
+    ...(STATUS_COLORS[status] || {}),
+    label: sector.statusLabels?.[status] || status,
+  });
+  const filters = [["all", "Toutes"], ...Object.entries(sector.statusLabels || {})];
+  const orderTypeLabel = (type) => sector.orderTypeLabels?.[type] || type;
+  const cap = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value);
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -57,7 +57,7 @@ export default function OrdersPage() {
       if (!firstLoad.current) {
         const fresh = items.filter((o) => !knownIds.current.has(o.id) && o.status === "PENDING");
         if (fresh.length) {
-          fresh.forEach((o) => toast(`🔔 Nouvelle commande ${o.reference}`, { description: formatFCFA(o.total) }));
+          fresh.forEach((o) => toast(`🔔 Nouvelle ${sector.orderNoun} ${o.reference}`, { description: formatFCFA(o.total) }));
         }
       }
       items.forEach((o) => knownIds.current.add(o.id));
@@ -65,7 +65,7 @@ export default function OrdersPage() {
       setOrders(items);
     } catch (e) { if (!silent) toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
     finally { setLoading(false); }
-  }, [filter, page]);
+  }, [filter, page, sector.orderNoun]);
 
   useEffect(() => { firstLoad.current = true; setPage(1); setLoading(true); load(); }, [filter, page, load]);
 
@@ -92,7 +92,7 @@ export default function OrdersPage() {
   const cancelOrder = async (o) => {
     try {
       await api.post(`/orders/${o.id}/cancel`, { reason: "Annulée depuis le dashboard" });
-      toast.success("Commande annulée.");
+      toast.success(`${cap(sector.orderNoun)} annulée.`);
       load(true); if (selected?.id === o.id) openDetail(o);
     } catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail)); }
   };
@@ -101,14 +101,14 @@ export default function OrdersPage() {
     <div className="max-w-6xl">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
         <div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="orders-title">Commandes</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Suivez et gérez les commandes en temps réel.</p>
+          <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="orders-title">{sector.ordersLabel}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Suivez et gérez vos {sector.ordersLabel.toLowerCase()} en temps réel.</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => load()} data-testid="orders-refresh"><RefreshCw className="w-4 h-4 mr-1" /> Actualiser</Button>
       </div>
 
       <div className="flex gap-2 flex-wrap mb-5">
-        {FILTERS.map(([v, l]) => (
+        {filters.map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)} data-testid={`filter-${v}`}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               filter === v ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
@@ -121,7 +121,7 @@ export default function OrdersPage() {
         <div className="grid place-items-center py-20"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
       ) : orders.length === 0 ? (
         <div className="bg-card border border-border rounded-2xl p-12 text-center text-muted-foreground" data-testid="orders-empty">
-          <Bell className="w-8 h-8 mx-auto mb-3 opacity-50" /> Aucune commande pour ce filtre.
+          <Bell className="w-8 h-8 mx-auto mb-3 opacity-50" /> Aucune {sector.orderNoun} pour ce filtre.
         </div>
       ) : (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -138,13 +138,13 @@ export default function OrdersPage() {
               </thead>
               <tbody>
                 {orders.map((o) => {
-                  const m = STATUS_META[o.status];
+                  const m = statusMeta(o.status);
                   return (
                     <tr key={o.id} onClick={() => openDetail(o)} className="border-t border-border cursor-pointer hover:bg-secondary/30"
                       data-testid={`order-row-${o.reference}`}>
                       <td className="px-5 py-3 font-mono font-medium">{o.reference}</td>
                       <td className="px-5 py-3">{o.customer_snapshot?.first_name} {o.customer_snapshot?.last_name}</td>
-                      <td className="px-5 py-3"><Badge variant="secondary">{o.order_type === "DELIVERY" ? "Livraison" : o.order_type === "PICKUP" ? "Retrait" : "Sur place"}</Badge></td>
+                      <td className="px-5 py-3"><Badge variant="secondary">{orderTypeLabel(o.order_type)}</Badge></td>
                       <td className="px-5 py-3 text-right font-mono font-semibold">{formatFCFA(o.total)}</td>
                       <td className="px-5 py-3 pl-6">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${m.color}`}>
@@ -181,7 +181,7 @@ export default function OrdersPage() {
                 <DialogTitle className="font-mono">{detail.reference}</DialogTitle>
                 <DialogDescription>
                   {new Date(detail.created_at).toLocaleString("fr-FR")} ·{" "}
-                  {detail.order_type === "DELIVERY" ? "Livraison" : detail.order_type === "PICKUP" ? "Retrait" : "Sur place"}
+                  {orderTypeLabel(detail.order_type)}
                 </DialogDescription>
               </DialogHeader>
 
@@ -213,18 +213,23 @@ export default function OrdersPage() {
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-2 pt-2">
-                  {(NEXT_ACTIONS[detail.status] || []).map(([status, label, Icon]) => (
-                    <Button key={status} size="sm" onClick={() => changeStatus(detail, status)} data-testid={`action-${status}`}>
-                      <Icon className="w-4 h-4 mr-1" /> {label}
-                    </Button>
-                  ))}
+                  {(sector.statusActions?.[detail.status] || [])
+                    .filter(([status]) => status !== "OUT_FOR_DELIVERY" || detail.order_type === "DELIVERY")
+                    .map(([status, label, iconKey]) => {
+                      const Icon = ACTION_ICONS[iconKey] || CheckCircle2;
+                      return (
+                        <Button key={status} size="sm" onClick={() => changeStatus(detail, status)} data-testid={`action-${status}`}>
+                          <Icon className="w-4 h-4 mr-1" /> {label}
+                        </Button>
+                      );
+                    })}
                   {canCancel && ["PENDING", "CONFIRMED", "PREPARING"].includes(detail.status) && (
                     <Button size="sm" variant="outline" className="text-destructive" onClick={() => cancelOrder(detail)} data-testid="action-cancel">
                       <XCircle className="w-4 h-4 mr-1" /> Annuler
                     </Button>
                   )}
                   {["DELIVERED", "CANCELLED"].includes(detail.status) && (
-                    <Badge variant="secondary">{STATUS_META[detail.status].label} — aucune action</Badge>
+                    <Badge variant="secondary">{statusMeta(detail.status).label} — aucune action</Badge>
                   )}
                 </div>
               </div>

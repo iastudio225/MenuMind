@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import {
-  ShoppingBag, TrendingUp, Clock, ChefHat, Wallet, UtensilsCrossed,
+  ShoppingBag, TrendingUp, Clock, ChefHat, Wallet, Truck,
   Users as UsersIcon, Sparkles, ArrowRight, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { formatFCFA } from "@/lib/format";
+import { secteurConfig } from "@/lib/secteurs";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardRestaurantContext } from "@/layouts/DashboardLayout";
 
@@ -32,6 +33,8 @@ export default function Overview() {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const restaurant = useContext(DashboardRestaurantContext);
+  const sector = secteurConfig(restaurant?.secteur);
+  const PreparingIcon = sector.value === "logistique" ? Truck : sector.value === "e-commerce" ? ShoppingBag : ChefHat;
 
   useEffect(() => {
     api.get("/dashboard/overview").then(({ data }) => setStats(data)).catch(() => setStats({}));
@@ -48,7 +51,7 @@ export default function Overview() {
           <h1 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight" data-testid="overview-title">
             Bonjour {user?.name?.split(" ")[0]} 👋
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">Voici l'activité de {restaurant?.name || "votre restaurant"} aujourd'hui.</p>
+          <p className="text-muted-foreground mt-1 text-sm">Voici l'activité de {restaurant?.name || `votre ${sector.dashboardNoun}`} aujourd'hui.</p>
         </div>
         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-sm font-medium">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Agent IA actif
@@ -62,7 +65,7 @@ export default function Overview() {
             <div className="flex items-center gap-3">
               <Sparkles className="w-5 h-5 text-primary" />
               <div>
-                <p className="font-semibold text-sm">Terminez la configuration de votre restaurant</p>
+                <p className="font-semibold text-sm">{sector.onboardingBannerTitle}</p>
                 <p className="text-xs text-muted-foreground">Ajoutez vos coordonnées et paramètres pour activer pleinement l'agent IA.</p>
               </div>
             </div>
@@ -72,13 +75,13 @@ export default function Overview() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        <StatCard icon={ShoppingBag} label="Commandes aujourd'hui" value={stats.orders_today ?? 0} tone="neutral" testid="stat-orders-today" />
+        <StatCard icon={ShoppingBag} label={sector.ordersTodayLabel} value={stats.orders_today ?? 0} tone="neutral" testid="stat-orders-today" />
         <StatCard icon={Wallet} label="Chiffre d'affaires (jour)" value={formatFCFA(stats.revenue_today)} tone="positive" testid="stat-revenue" />
-        <StatCard icon={TrendingUp} label="Commandes (7 jours)" value={stats.orders_week ?? 0} hint={formatFCFA(stats.revenue_week) + " cette semaine"} tone="positive" testid="stat-orders-week" />
-        <StatCard icon={Clock} label="Commandes en attente" value={stats.pending ?? 0} hint={stats.pending ? "Action requise" : "Rien à traiter"}
+        <StatCard icon={TrendingUp} label={sector.ordersWeekLabel} value={stats.orders_week ?? 0} hint={formatFCFA(stats.revenue_week) + " cette semaine"} tone="positive" testid="stat-orders-week" />
+        <StatCard icon={Clock} label={sector.pendingLabel} value={stats.pending ?? 0} hint={stats.pending ? "Action requise" : "Rien à traiter"}
           tone={stats.pending ? "warning" : "neutral"} testid="stat-pending" />
-        <StatCard icon={ChefHat} label="En préparation" value={stats.preparing ?? 0} hint="Cuisine" tone="neutral" testid="stat-preparing" />
-        <StatCard icon={Wallet} label="Panier moyen" value={formatFCFA(stats.avg_basket)} tone="positive" testid="stat-avg-basket" />
+        <StatCard icon={PreparingIcon} label={sector.preparingLabel} value={stats.preparing ?? 0} hint={sector.preparingHint} tone="neutral" testid="stat-preparing" />
+        <StatCard icon={Wallet} label={sector.avgBasketLabel} value={formatFCFA(stats.avg_basket)} tone="positive" testid="stat-avg-basket" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
@@ -92,9 +95,9 @@ export default function Overview() {
         </div>
         <div className="bg-[#0F172A] text-white rounded-2xl p-6 relative overflow-hidden">
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary/30 blur-3xl" />
-          <h3 className="font-semibold mb-2 flex items-center gap-2 relative z-10"><Sparkles className="w-4 h-4 text-primary" /> Votre restaurant, prêt à commander</h3>
+          <h3 className="font-semibold mb-2 flex items-center gap-2 relative z-10"><Sparkles className="w-4 h-4 text-primary" /> {sector.ctaTitle}</h3>
           <p className="text-sm text-white/70 relative z-10">
-            Gérez votre menu, recevez les commandes avec l’agent IA et suivez votre activité depuis ce tableau de bord.
+            {sector.ctaBody}
           </p>
         </div>
       </div>
