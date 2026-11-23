@@ -13,6 +13,7 @@ import logging
 from fastapi import HTTPException
 
 from services import order_service as svc
+from services import rag
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ AFFIRM = re.compile(
 
 TOOL_NAMES = [
     "get_available_menu", "get_delivery_zones", "get_day_menu", "recommend_items",
-    "show_catalog", "add_to_cart", "update_cart_item",
+    "show_catalog", "search_knowledge", "add_to_cart", "update_cart_item",
     "remove_from_cart", "set_fulfillment", "set_customer", "calculate_cart", "create_order",
 ]
 
@@ -79,6 +80,15 @@ async def _dispatch(db, conversation: dict, tool: str, args: dict, last_user_mes
 
     if tool == "get_delivery_zones":
         return {"zones": await svc.get_delivery_zones(db, rid, active_only=True)}, None
+
+    if tool == "search_knowledge":
+        query = str(args.get("query") or "").strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="Requête vide")
+        results = await rag.search_knowledge(db, rid, query, limit=int(args.get("limit", 5) or 5))
+        return {"results": results,
+                "hint": "Réponds uniquement à partir de ces extraits et cite le titre de la source. "
+                        "Si la liste est vide, dis que l'information n'est pas disponible."}, None
 
     if tool == "get_day_menu":
         # D1.54: the ONLY entry point to the weekly plan — the day/timezone

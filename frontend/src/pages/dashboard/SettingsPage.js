@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Save, Copy, ExternalLink, Share2 } from "lucide-react";
+import { Loader2, Save, Copy, ExternalLink, Share2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatApiErrorDetail } from "@/lib/format";
@@ -21,9 +21,25 @@ export default function SettingsPage() {
   const readOnly = user?.role === "RESTAURANT_STAFF";
   const [data, setData] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [knowledge, setKnowledge] = useState([]);
+  const [kbForm, setKbForm] = useState({ title: "", content: "" });
+  const [kbSaving, setKbSaving] = useState(false);
+  const [kbLoading, setKbLoading] = useState(true);
+
+  const loadKnowledge = async () => {
+    try {
+      const { data: docs } = await api.get("/knowledge/documents");
+      setKnowledge(Array.isArray(docs) ? docs : []);
+    } catch {
+      setKnowledge([]);
+    } finally {
+      setKbLoading(false);
+    }
+  };
 
   useEffect(() => {
     api.get("/restaurants/me").then(({ data }) => setData({ ...data, notifications: data.notifications || {} })).catch(() => {});
+    loadKnowledge();
   }, []);
 
   const set = (k) => (e) => setData((d) => ({ ...d, [k]: e.target.value }));
@@ -99,6 +115,51 @@ export default function SettingsPage() {
       toast.error(formatApiErrorDetail(err.response?.data?.detail));
     }
   };
+
+  const addKnowledge = async (e) => {
+    e.preventDefault();
+    if (!kbForm.title.trim() || !kbForm.content.trim()) return;
+    setKbSaving(true);
+    try {
+      await api.post("/knowledge/documents", { title: kbForm.title.trim(), content: kbForm.content });
+      toast.success("Document ajouté à la base de connaissances.");
+      setKbForm({ title: "", content: "" });
+      loadKnowledge();
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    } finally {
+      setKbSaving(false);
+    }
+  };
+
+  const uploadKnowledge = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("title", file.name);
+    setKbSaving(true);
+    try {
+      await api.post("/knowledge/documents/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+      toast.success("Fichier ajouté à la base de connaissances.");
+      loadKnowledge();
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    } finally {
+      setKbSaving(false);
+      e.target.value = "";
+    }
+  };
+
+  const deleteKnowledge = async (sourceId) => {
+    try {
+      await api.delete(`/knowledge/documents/${sourceId}`);
+      toast.success("Document supprimé.");
+      loadKnowledge();
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    }
+  };
   if (!data) return <div className="grid place-items-center py-20"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
 
   return (
@@ -111,6 +172,7 @@ export default function SettingsPage() {
           <TabsTrigger value="widget" data-testid="tab-widget">Widget</TabsTrigger>
           <TabsTrigger value="chatbot" data-testid="tab-chatbot">Chatbot</TabsTrigger>
           <TabsTrigger value="notifications" data-testid="tab-notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="knowledge" data-testid="tab-knowledge">Connaissances</TabsTrigger>
         </TabsList>
 
         <TabsContent value="restaurant" className="mt-6">
@@ -244,6 +306,66 @@ export default function SettingsPage() {
             </div>
             <div className="rounded-lg bg-secondary/50 p-3 text-xs text-muted-foreground">
               Événements : <code>order.created</code>, <code>order.status_changed</code>, <code>order.cancelled</code>, <code>test</code>.
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="knowledge" className="mt-6">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="space-y-2">
+              <h2 className="font-heading text-xl font-semibold">Base de connaissances (RAG)</h2>
+              <p className="text-sm text-muted-foreground">
+                Ajoutez des documents (FAQ, conditions, procédures) que l'agent peut consulter pour répondre
+                aux questions hors catalogue. Les embeddings utilisent Gemini.
+              </p>
+            </div>
+            <form onSubmit={addKnowledge} className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="knowledge-title">Titre</Label>
+                <Input id="knowledge-title" value={kbForm.title} onChange={(e) => setKbForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="Ex. Conditions de livraison" required data-testid="knowledge-title-input" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="knowledge-content">Contenu</Label>
+                <Textarea id="knowledge-content" rows={5} value={kbForm.content}
+                  onChange={(e) => setKbForm((f) => ({ ...f, content: e.target.value }))}
+                  placeholder="Collez ici le texte du document…" required data-testid="knowledge-content-input" />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="submit" disabled={kbSaving} data-testid="knowledge-add-button">
+                  {kbSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1" /> Ajouter le document</>}
+                </Button>
+                <label className="inline-flex">
+                  <input type="file" accept=".txt,.md,.pdf" className="hidden" onChange={uploadKnowledge}
+                    data-testid="knowledge-upload-input" />
+                  <span className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-2 text-sm font-medium cursor-pointer hover:bg-secondary">
+                    <Plus className="w-4 h-4" /> Importer un fichier
+                  </span>
+                </label>
+              </div>
+            </form>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Documents ({knowledge.length})</h3>
+              {kbLoading ? (
+                <div className="grid place-items-center py-6"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+              ) : knowledge.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun document dans la base de connaissances.</p>
+              ) : (
+                <div className="space-y-2">
+                  {knowledge.map((doc) => (
+                    <div key={doc.source_id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm" data-testid={`knowledge-doc-${doc.source_id}`}>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{doc.title}</p>
+                        <p className="text-xs text-muted-foreground">{doc.source_type} · {doc.chunks} extrait(s)</p>
+                      </div>
+                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-destructive"
+                        onClick={() => deleteKnowledge(doc.source_id)} data-testid={`knowledge-delete-${doc.source_id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>

@@ -203,10 +203,12 @@ OUTILS DISPONIBLES : {TOOL_NAMES}
 - get_day_menu {{}} — OBLIGATOIRE dès que le client demande {vocab['day_menu_phrases']} : tu DOIS appeler cet outil et présenter les cartes renvoyées (produits validés par le serveur). Ne liste JAMAIS ces informations depuis la section {vocab['menu_section']}.
 - recommend_items {{"item_ids":[...]}} — UNIQUEMENT quand le client exprime une préférence ({vocab['recommend']}...) : choisis au plus 6 ids dans {vocab['menu_section']} ci-dessus puis présente les cartes renvoyées. Jamais d'identifiant hors catalogue.
 - show_catalog {{"page"?}} — UNIQUEMENT si le client demande explicitement tout le {vocab['catalogue']} / le catalogue complet ; page > 0 uniquement si le client demande la suite.
+- search_knowledge {{"query":"...","limit"?}} — interroge la base de connaissances de l'établissement (FAQ, conditions, documents). Utilise-la pour les questions hors catalogue, cite le titre de la source et n'invente jamais.
 
 UTILISATION DES OUTILS (IMPORTANT) :
 - Les sections {vocab['menu_section']}, ZONES DE LIVRAISON et {vocab['cart_section']} ci-dessus sont construites à partir des données du serveur pour ce tour : elles sont la référence et suffisent pour répondre aux questions générales sur les {vocab['items']}, les prix, les disponibilités, les zones et les frais — SAUF {vocab['day_menu_phrases']}, qui exigent TOUJOURS l'outil get_day_menu (jamais une liste écrite depuis le contexte).
 - Ne pas appeler get_available_menu ni get_delivery_zones uniquement pour relire ces informations déjà présentes dans ce contexte.
+- Pour les questions hors catalogue (conditions, FAQ, documents, politiques), appelle search_knowledge ; base-toi uniquement sur les extraits renvoyés et cite la source.
 - Utiliser un outil UNIQUEMENT quand une opération réelle l'exige : modifier le {vocab['cart']}, enregistrer le client ou la livraison, calculer le total officiel du serveur, créer la {vocab['order']}, ou re-vérifier une donnée dont tu as réellement besoin à l'instant.
 - N'invente JAMAIS un résultat d'outil, un {vocab['item']}, un prix ou une disponibilité : chaque outil renvoie une donnée validée par le serveur.
 - get_day_menu, recommend_items et show_catalog renvoient des cartes produits du serveur (champ "products") : présente ces produits tels quels (noms, prix, disponibilité). Si "products" est vide, ne présente JAMAIS tout le catalogue automatiquement : demande d'abord au client ce qu'il recherche.
