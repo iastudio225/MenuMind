@@ -32,6 +32,29 @@ def validate_secteur(value: Optional[str]) -> Optional[str]:
     return value
 
 
+# ---- Configuration IA (V1: plan + défaut global) ----
+AI_PROVIDERS = ("gemini", "bytez")
+
+
+def validate_ai_settings(value: Optional[dict]) -> Optional[dict]:
+    """Normalise et valide {provider, model} ; None/{} signifie « hériter »."""
+    if value is None or value == {}:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError("Configuration IA invalide")
+    provider = str(value.get("provider") or "").strip().lower()
+    model = str(value.get("model") or "").strip()
+    if not provider and not model:
+        return None
+    if provider not in AI_PROVIDERS:
+        raise ValueError(f"Fournisseur IA invalide. Valeurs autorisées : {', '.join(AI_PROVIDERS)}")
+    if not model:
+        raise ValueError("Le modèle IA est requis")
+    if provider == "bytez" and "/" not in model:
+        raise ValueError("Modèle Bytez invalide (format attendu : fournisseur/modèle)")
+    return {"provider": provider, "model": model}
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -165,6 +188,12 @@ class PlanCreate(BaseModel):
     price: int = Field(ge=0)
     currency: str = "FCFA"
     limits: Dict[str, Any] = {}
+    ai: Optional[Dict[str, Any]] = None
+
+    @field_validator("ai")
+    @classmethod
+    def _ai_valide(cls, value):
+        return validate_ai_settings(value)
 
 
 class PlanUpdate(BaseModel):
@@ -172,6 +201,17 @@ class PlanUpdate(BaseModel):
     price: Optional[int] = Field(default=None, ge=0)
     currency: Optional[str] = None
     limits: Optional[Dict[str, Any]] = None
+    ai: Optional[Dict[str, Any]] = None
+
+    @field_validator("ai")
+    @classmethod
+    def _ai_valide(cls, value):
+        return validate_ai_settings(value)
+
+
+class AISettingsUpdate(BaseModel):
+    provider: str
+    model: str
 
 
 # License history contracts are separate from the legacy restaurant date

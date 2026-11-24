@@ -9,7 +9,6 @@ from bson import ObjectId
 from database import db
 from auth import get_current_user, tenant_id_of
 from services.ai import agent_service
-from services.ai.provider import get_configured_provider
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/public/ai", tags=["ai"])
@@ -53,7 +52,7 @@ async def chat(body: ChatBody, request: Request):
     ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
     _rate_limit(ip)
     return await agent_service.process_message(
-        db, body.restaurant_public_id, body.conversation_id, body.message, get_configured_provider,
+        db, body.restaurant_public_id, body.conversation_id, body.message, None,
         cart_id=body.cart_id)
 
 
@@ -75,6 +74,6 @@ async def test_chat(body: TestChatBody, user: dict = Depends(get_current_user)):
     restaurant = await db.restaurants.find_one({"_id": ObjectId(rid)})
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant introuvable")
-    provider = get_configured_provider()
+    provider = None
     return await agent_service.process_message(
         db, restaurant["public_id"], body.conversation_id, body.message, provider)

@@ -39,6 +39,7 @@ COLLECTIONS = (
     "password_reset_requests", "counters", "pending_registrations",
     "email_verification_tokens", "trial_eligibility", "license_operations",
     "license_history", "verification_rate_limits", "license_conversion_requests",
+    "platform_settings",
 )
 
 

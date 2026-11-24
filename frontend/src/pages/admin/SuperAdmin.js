@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Building2, CheckCircle2, PauseCircle, Wallet, ShoppingBag, LogOut,
   Plus, Loader2, Eye, Pencil, Trash2, KeyRound, Copy, XCircle,
-  Lock,
+  Lock, Save, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
@@ -56,13 +56,17 @@ const BOOL_FIELDS = [
 function PlanDialog({ open, onOpenChange, editing, onSaved, plans }) {
   const empty = { code: "", name: "", price: 0, currency: "FCFA",
     limits: { max_orders_per_month: 300, max_ai_conversations: 500, max_users: 2,
-      whatsapp_enabled: false, analytics_enabled: false, custom_branding: false } };
+      whatsapp_enabled: false, analytics_enabled: false, custom_branding: false },
+    ai: { provider: "gemini", model: "" } };
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setForm(editing ? { ...editing, limits: { ...empty.limits, ...(editing.limits || {}) } } : empty);
+      setForm(editing
+        ? { ...editing, limits: { ...empty.limits, ...(editing.limits || {}) },
+            ai: { provider: editing.ai?.provider || "gemini", model: editing.ai?.model || "" } }
+        : empty);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
@@ -82,6 +86,7 @@ function PlanDialog({ open, onOpenChange, editing, onSaved, plans }) {
         max_ai_conversations: Number(form.limits.max_ai_conversations),
         max_users: Number(form.limits.max_users),
       },
+      ai: form.ai?.model?.trim() ? { provider: form.ai.provider || "gemini", model: form.ai.model.trim() } : null,
     };
     try {
       if (editing) {
@@ -130,6 +135,26 @@ function PlanDialog({ open, onOpenChange, editing, onSaved, plans }) {
                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} data-testid="plan-price" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Fournisseur IA</Label>
+              <Select value={form.ai?.provider || "gemini"}
+                onValueChange={(v) => setForm((f) => ({ ...f, ai: { ...(f.ai || {}), provider: v } }))}>
+                <SelectTrigger data-testid="plan-ai-provider"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gemini">Gemini</SelectItem>
+                  <SelectItem value="bytez">Bytez</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Modèle IA (vide = défaut global)</Label>
+              <Input value={form.ai?.model || ""}
+                onChange={(e) => setForm((f) => ({ ...f, ai: { ...(f.ai || {}), model: e.target.value } }))}
+                placeholder={form.ai?.provider === "bytez" ? "openai/gpt-4o" : "gemini-2.5-flash"}
+                data-testid="plan-ai-model" />
+            </div>
+          </div>
           <div className="space-y-3">
             <Label className="font-semibold">Limites</Label>
             {LIMIT_FIELDS.map((lf) => (
@@ -167,6 +192,10 @@ export default function SuperAdmin() {
   const [metrics, setMetrics] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
   const [plans, setPlans] = useState([]);
+  const [aiSettings, setAiSettings] = useState(null);
+  const [aiForm, setAiForm] = useState({ provider: "gemini", model: "" });
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiTesting, setAiTesting] = useState(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", owner_name: "", owner_email: "", owner_password: "", plan: "STARTER", secteur: "restaurant" });
@@ -187,14 +216,47 @@ export default function SuperAdmin() {
 
   const load = async () => {
     try {
-      const [m, r, p] = await Promise.all([
+      const [m, r, p, a] = await Promise.all([
         api.get("/admin/metrics"), api.get("/admin/restaurants"), api.get("/admin/plans"),
+        api.get("/admin/ai-settings"),
       ]);
       setMetrics(m.data);
       setRestaurants(r.data);
       setPlans(p.data);
+      setAiSettings(a.data);
+      setAiForm({
+        provider: a.data.settings?.provider || a.data.env?.gateway || "gemini",
+        model: a.data.settings?.model || a.data.env?.model || "",
+      });
     } catch (e) {
       toast.error(formatApiErrorDetail(e.response?.data?.detail));
+    }
+  };
+
+  const saveAiSettings = async (e) => {
+    e.preventDefault();
+    setAiSaving(true);
+    try {
+      await api.patch("/admin/ai-settings", aiForm);
+      toast.success("Configuration IA enregistrée");
+      load();
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    } finally {
+      setAiSaving(false);
+    }
+  };
+
+  const testAiSettings = async () => {
+    setAiTesting(true);
+    try {
+      const { data } = await api.post("/admin/ai-settings/test");
+      if (data.ok) toast.success("Modèle opérationnel");
+      else toast.error(`Échec : ${data.detail || "inconnu"}`);
+    } catch (err) {
+      toast.error(formatApiErrorDetail(err.response?.data?.detail));
+    } finally {
+      setAiTesting(false);
     }
   };
 
@@ -405,6 +467,7 @@ export default function SuperAdmin() {
           <TabsList>
             <TabsTrigger value="restaurants" data-testid="admin-tab-restaurants">Établissements</TabsTrigger>
             <TabsTrigger value="plans" data-testid="admin-tab-plans">Plans & licences</TabsTrigger>
+            <TabsTrigger value="ai" data-testid="admin-tab-ai">Modèles IA</TabsTrigger>
           </TabsList>
 
           <TabsContent value="restaurants">
@@ -427,6 +490,7 @@ export default function SuperAdmin() {
                     <tr>
                       <th className="text-left font-medium px-5 py-3">Établissement</th>
                       <th className="text-left font-medium px-5 py-3">Secteur</th>
+                      <th className="text-left font-medium px-5 py-3">Modèle IA</th>
                       <th className="text-left font-medium px-5 py-3">Propriétaire</th>
                       <th className="text-left font-medium px-5 py-3">Licence</th>
                       <th className="text-left font-medium px-5 py-3">Statut</th>
@@ -442,6 +506,12 @@ export default function SuperAdmin() {
                         </td>
                         <td className="px-5 py-3">
                           <Badge variant="outline" data-testid={`tenant-secteur-${i}`}>{secteurConfig(r.secteur).label}</Badge>
+                        </td>
+                        <td className="px-5 py-3">
+                          {(() => {
+                            const planAi = plans.find((p) => p.code === r.plan)?.ai;
+                            return <Badge variant="outline" data-testid={`tenant-ai-${i}`}>{planAi?.model ? `${planAi.provider} / ${planAi.model}` : "Défaut"}</Badge>;
+                          })()}
                         </td>
                         <td className="px-5 py-3 text-muted-foreground">{r.owner_email || "—"}</td>
                         <td className="px-5 py-3">
@@ -505,6 +575,7 @@ export default function SuperAdmin() {
                       <th className="text-left font-medium px-5 py-3">Plan</th>
                       <th className="text-left font-medium px-5 py-3">Prix / mois</th>
                       <th className="text-left font-medium px-5 py-3">Limites</th>
+                      <th className="text-left font-medium px-5 py-3">Modèle IA</th>
                       <th className="text-left font-medium px-5 py-3">Licences actives</th>
                       <th className="text-right font-medium px-5 py-3">Actions</th>
                     </tr>
@@ -524,6 +595,9 @@ export default function SuperAdmin() {
                           {p.limits?.whatsapp_enabled && " · WhatsApp"}
                           {p.limits?.analytics_enabled && " · Analytics"}
                           {p.limits?.custom_branding && " · Branding"}
+                        </td>
+                        <td className="px-5 py-3">
+                          <Badge variant="outline">{p.ai?.model ? `${p.ai.provider} / ${p.ai.model}` : "Défaut global"}</Badge>
                         </td>
                         <td className="px-5 py-3" data-testid={`plan-assignments-${i}`}>{p.restaurants_count ?? 0}</td>
                         <td className="px-5 py-3 text-right space-x-1">
@@ -545,6 +619,54 @@ export default function SuperAdmin() {
               </div>
             </div>
           </TabsContent>
+
+          <TabsContent value="ai">
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-5" data-testid="admin-ai-settings">
+              <div>
+                <h2 className="font-heading text-xl font-semibold">Modèle IA par défaut</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Appliqué aux établissements dont le plan ne définit pas de modèle. Les clés API restent dans Coolify.
+                </p>
+              </div>
+              <form onSubmit={saveAiSettings} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Fournisseur</Label>
+                  <Select value={aiForm.provider} onValueChange={(v) => setAiForm((f) => ({ ...f, provider: v }))}>
+                    <SelectTrigger data-testid="ai-provider"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(aiSettings?.providers || ["gemini", "bytez"]).map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Modèle</Label>
+                  <Input required value={aiForm.model} onChange={(e) => setAiForm((f) => ({ ...f, model: e.target.value }))}
+                    placeholder={aiForm.provider === "bytez" ? "openai/gpt-4o" : "gemini-2.5-flash"} data-testid="ai-model" />
+                </div>
+                <div className="sm:col-span-2 flex flex-wrap gap-2">
+                  <Button type="submit" disabled={aiSaving} data-testid="ai-save">
+                    {aiSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1" /> Enregistrer</>}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={testAiSettings} disabled={aiTesting} data-testid="ai-test">
+                    {aiTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RefreshCw className="w-4 h-4 mr-1" /> Tester</>}
+                  </Button>
+                </div>
+              </form>
+              <div className="rounded-lg bg-secondary/50 p-3 text-sm space-y-2">
+                <p className="font-medium">Clés disponibles</p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge variant={aiSettings?.keys?.gemini ? "secondary" : "destructive"}>Gemini : {aiSettings?.keys?.gemini ? "présente" : "absente"}</Badge>
+                  <Badge variant={aiSettings?.keys?.bytez ? "secondary" : "destructive"}>Bytez : {aiSettings?.keys?.bytez ? "présente" : "absente"}</Badge>
+                  <Badge variant={aiSettings?.keys?.bytez_provider ? "secondary" : "destructive"}>Bytez provider : {aiSettings?.keys?.bytez_provider ? "présente" : "absente"}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Défaut env : {aiSettings?.env?.gateway} / {aiSettings?.env?.model}
+                </p>
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -559,6 +681,7 @@ export default function SuperAdmin() {
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div><p className="text-muted-foreground">Secteur</p><p>{secteurConfig(detail.secteur).label}</p></div>
+                <div><p className="text-muted-foreground">Modèle IA</p><p>{detail.effective_ai ? `${detail.effective_ai.provider} / ${detail.effective_ai.model} (${detail.effective_ai.source})` : "—"}</p></div>
                 <div><p className="text-muted-foreground">Ville</p><p>{detail.city || "—"}</p></div>
                 <div><p className="text-muted-foreground">Adresse</p><p>{detail.address || "—"}</p></div>
                 <div><p className="text-muted-foreground">Téléphone</p><p>{detail.phone || "—"}</p></div>

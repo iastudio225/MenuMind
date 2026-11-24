@@ -311,6 +311,16 @@ def _parse_action(raw: str) -> dict:
         return {"message": raw.strip(), "tool": None, "args": {}}
 
 
+async def _resolve_provider(db, restaurant: dict):
+    """Resolve the model from the plan/global settings, falling back to env."""
+    from services.ai.provider import get_provider_for_restaurant
+    plan = None
+    if restaurant.get("plan"):
+        plan = await db.plans.find_one({"code": restaurant["plan"]})
+    platform = await db.platform_settings.find_one({"_id": "ai"})
+    return get_provider_for_restaurant(restaurant, plan, platform)
+
+
 async def process_message(db, restaurant_public_id: str, conversation_id: Optional[str],
                           user_message: str, provider, cart_id: Optional[str] = None) -> dict:
     if not user_message or not user_message.strip():
@@ -365,10 +375,10 @@ async def process_message(db, restaurant_public_id: str, conversation_id: Option
 
         # Reserve the model call before generate: when the restaurant budget is
         # exhausted the request stops here with 429, without calling the model.
-        # Public chat supplies a factory so configuration/API keys are not
-        # loaded on deterministic turns. Console tests may still pass a provider.
+        # Public chat passes None so the provider is resolved from the tenant's
+        # plan/global settings; tests may still pass a provider or a factory.
         if not hasattr(provider, "generate"):
-            provider = provider()
+            provider = provider() if provider is not None else await _resolve_provider(db, restaurant)
         quota.record_model_call(rid)
         raw = await provider.generate(system_prompt, transcript + turn_notes)
         action = _parse_action(raw)

@@ -1,14 +1,17 @@
 import secrets
 import asyncio
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from bson import ObjectId
 
 from database import db
 from models import (AdminRestaurantCreate, AdminRestaurantUpdate, RestaurantStatusUpdate,
-                    PlanCreate, PlanUpdate, UserPasswordUpdate, serialize, now_iso,
-                    SUPER_ADMIN, RESTAURANT_OWNER, normalize_secteur)
+                    PlanCreate, PlanUpdate, UserPasswordUpdate, AISettingsUpdate,
+                    serialize, now_iso, SUPER_ADMIN, RESTAURANT_OWNER,
+                    normalize_secteur, validate_ai_settings, AI_PROVIDERS)
 from auth import require_roles, hash_password
 from routers.auth_router import default_opening_hours, default_widget_message
+from services.ai.provider import effective_ai_settings, get_provider_for_restaurant
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -18,6 +21,63 @@ EDITABLE_RESTAURANT_FIELDS = ("name", "description", "phone", "whatsapp", "email
 
 async def plan_assignments_count(code: str) -> int:
     return await db.restaurants.count_documents({"plan": code, "status": {"$ne": "deleted"}})
+
+
+@router.get("/ai-settings")
+async def get_ai_settings(user: dict = Depends(require_roles(SUPER_ADMIN))):
+    doc = await db.platform_settings.find_one({"_id": "ai"})
+    settings = None
+    if doc and doc.get("provider") and doc.get("model"):
+        settings = {"provider": doc.get("provider"), "model": doc.get("model")}
+    return {
+        "settings": settings,
+        "env": {
+            "gateway": os.environ.get("AI_GATEWAY") or os.environ.get("AI_PROVIDER") or "gemini",
+            "model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+            "bytez_model": os.environ.get("AI_MODEL", ""),
+        },
+        "keys": {
+            "gemini": bool(os.environ.get("GEMINI_API_KEY")),
+            "bytez": bool(os.environ.get("BYTEZ_API_KEY")),
+            "bytez_provider": bool(os.environ.get("BYTEZ_PROVIDER_KEY")),
+        },
+        "providers": list(AI_PROVIDERS),
+    }
+
+
+@router.patch("/ai-settings")
+async def update_ai_settings(body: AISettingsUpdate, user: dict = Depends(require_roles(SUPER_ADMIN))):
+    try:
+        ai = validate_ai_settings(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not ai:
+        raise HTTPException(status_code=400, detail="Configuration IA invalide")
+    ts = now_iso()
+    await db.platform_settings.update_one(
+        {"_id": "ai"},
+        {"$set": {**ai, "updated_at": ts, "updated_by": user["_id"]}},
+        upsert=True,
+    )
+    await db.audit_logs.insert_one({"user_id": user["_id"], "action": "AI_SETTINGS_UPDATE",
+                                    "detail": ai, "created_at": ts})
+    return {"settings": ai}
+
+
+@router.post("/ai-settings/test")
+async def test_ai_settings(user: dict = Depends(require_roles(SUPER_ADMIN))):
+    platform = await db.platform_settings.find_one({"_id": "ai"})
+    try:
+        provider = get_provider_for_restaurant({}, None, platform)
+        sample = await provider.generate(
+            "Tu es un test de configuration. Réponds uniquement par OK.",
+            [{"role": "user", "content": "OK"}],
+        )
+        return {"ok": True, "sample": str(sample)[:200]}
+    except HTTPException as exc:
+        return {"ok": False, "detail": exc.detail}
+    except Exception:
+        return {"ok": False, "detail": "Échec du test du modèle"}
 
 
 @router.get("/metrics")
@@ -60,6 +120,9 @@ async def restaurant_detail(restaurant_id: str, user: dict = Depends(require_rol
     s = serialize(doc)
     s["users"] = [serialize(u, drop=["password_hash"]) for u in users]
     s["orders_count"] = await db.orders.count_documents({"restaurant_id": restaurant_id})
+    plan = await db.plans.find_one({"code": s.get("plan")}) if s.get("plan") else None
+    platform = await db.platform_settings.find_one({"_id": "ai"})
+    s["effective_ai"] = effective_ai_settings(s, plan, platform)
     return s
 
 
