@@ -3,7 +3,7 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from models import validate_ai_settings, PlanCreate, PlanUpdate
+from models import validate_ai_settings, PlanCreate, PlanUpdate, AdminRestaurantUpdate
 from services.ai.provider import resolve_ai_settings, effective_ai_settings, get_provider_for_restaurant
 from services.ai.gemini_provider import GeminiProvider
 from services.ai.bytez_provider import BytezProvider
@@ -88,6 +88,24 @@ def test_plan_models_validate_ai():
         PlanCreate(code="TEST", name="Test", price=0, ai={"provider": "inconnu", "model": "m"})
     with pytest.raises(ValidationError):
         PlanUpdate(ai={"provider": "bytez", "model": "sans-slash"})
+
+
+def test_restaurant_override_validation_and_clearing():
+    body = AdminRestaurantUpdate(ai_override={"provider": "bytez", "model": "openai/gpt-4o"})
+    assert body.ai_override == {"provider": "bytez", "model": "openai/gpt-4o"}
+    assert AdminRestaurantUpdate(ai_override=None).ai_override is None
+    with pytest.raises(ValidationError):
+        AdminRestaurantUpdate(ai_override={"provider": "bytez", "model": "sans-slash"})
+
+
+def test_effective_ai_settings_reports_override(monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL", "env-model")
+    resolved = effective_ai_settings(
+        {"ai_override": {"provider": "gemini", "model": "override-model"}},
+        {"ai": {"provider": "gemini", "model": "plan-model"}},
+        {},
+    )
+    assert resolved == {"provider": "gemini", "model": "override-model", "source": "override"}
 
 
 def test_effective_ai_settings_exposes_source(monkeypatch):

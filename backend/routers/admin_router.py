@@ -158,7 +158,7 @@ async def update_restaurant(restaurant_id: str, body: AdminRestaurantUpdate,
     await db.audit_logs.insert_one({"restaurant_id": restaurant_id, "user_id": user["_id"],
                                     "action": "RESTAURANT_UPDATE",
                                      "detail": {k: updates.get(k) for k in
-                                                ("plan", "plan_activated_at", "plan_expires_at", "name", "city")},
+                                                ("plan", "plan_activated_at", "plan_expires_at", "name", "city", "ai_override")},
                                     "created_at": now_iso()})
     return {"message": "Restaurant mis à jour"}
 
@@ -207,7 +207,7 @@ async def create_restaurant(body: AdminRestaurantCreate, user: dict = Depends(re
         "whatsapp": "", "email": email, "address": "", "city": "", "country": "Côte d'Ivoire",
         "currency": "FCFA", "timezone": "Africa/Abidjan", "opening_hours": default_opening_hours(),
         "status": "active", "plan": body.plan or "STARTER", "onboarding_completed": False,
-        "secteur": secteur,
+        "secteur": secteur, "ai_override": body.ai_override,
         "widget": {"primary_color": "#E05638", "secondary_color": "#0F172A",
                    "welcome_message": default_widget_message(body.name, secteur), "logo": ""},
         "created_at": ts, "updated_at": ts,

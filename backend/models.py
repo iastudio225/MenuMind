@@ -148,11 +148,17 @@ class AdminRestaurantCreate(BaseModel):
     owner_password: str = Field(min_length=6)
     plan: Optional[str] = "STARTER"
     secteur: Optional[str] = "restaurant"
+    ai_override: Optional[Dict[str, Any]] = None
 
     @field_validator("secteur")
     @classmethod
     def _secteur_valide(cls, value):
         return validate_secteur(value)
+
+    @field_validator("ai_override")
+    @classmethod
+    def _ai_override_valide(cls, value):
+        return validate_ai_settings(value)
 
 
 class RestaurantStatusUpdate(BaseModel):
@@ -171,11 +177,17 @@ class AdminRestaurantUpdate(BaseModel):
     plan: Optional[str] = None
     plan_activated_at: Optional[str] = None  # ISO date, null = non définie
     plan_expires_at: Optional[str] = None  # ISO date, null = sans expiration
+    ai_override: Optional[Dict[str, Any]] = None
 
     @field_validator("secteur")
     @classmethod
     def _secteur_valide(cls, value):
         return validate_secteur(value)
+
+    @field_validator("ai_override")
+    @classmethod
+    def _ai_override_valide(cls, value):
+        return validate_ai_settings(value)
 
 
 class UserPasswordUpdate(BaseModel):

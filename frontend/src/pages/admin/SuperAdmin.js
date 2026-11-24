@@ -20,6 +20,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -311,17 +312,26 @@ export default function SuperAdmin() {
       city: r.city || "", plan: r.plan || "STARTER", secteur: r.secteur || "restaurant",
       plan_activated_at: r.plan_activated_at ? r.plan_activated_at.slice(0, 10) : "",
       plan_expires_at: r.plan_expires_at ? r.plan_expires_at.slice(0, 10) : "",
+      ai_inherit: !r.ai_override?.provider,
+      ai_provider: r.ai_override?.provider || "gemini",
+      ai_model: r.ai_override?.model || "",
     });
     setEditOpen(true);
   };
 
   const submitEdit = async (e) => {
     e.preventDefault();
+    if (!editForm.ai_inherit && !editForm.ai_model.trim()) {
+      toast.error("Modèle IA requis (ou cochez « Hériter du plan »)");
+      return;
+    }
     setSaving(true);
+    const { ai_inherit, ai_provider, ai_model, ...rest } = editForm;
     const payload = {
-      ...editForm,
+      ...rest,
       plan_activated_at: editForm.plan_activated_at || null,
       plan_expires_at: editForm.plan_expires_at || null,
+      ai_override: ai_inherit ? null : { provider: ai_provider || "gemini", model: ai_model.trim() },
     };
     try {
       await api.patch(`/admin/restaurants/${editTarget.id}`, payload);
@@ -509,8 +519,8 @@ export default function SuperAdmin() {
                         </td>
                         <td className="px-5 py-3">
                           {(() => {
-                            const planAi = plans.find((p) => p.code === r.plan)?.ai;
-                            return <Badge variant="outline" data-testid={`tenant-ai-${i}`}>{planAi?.model ? `${planAi.provider} / ${planAi.model}` : "Défaut"}</Badge>;
+                            const ai = r.ai_override?.model ? r.ai_override : plans.find((p) => p.code === r.plan)?.ai;
+                            return <Badge variant="outline" data-testid={`tenant-ai-${i}`}>{ai?.model ? `${ai.provider} / ${ai.model}${r.ai_override?.model ? " · override" : ""}` : "Défaut"}</Badge>;
                           })()}
                         </td>
                         <td className="px-5 py-3 text-muted-foreground">{r.owner_email || "—"}</td>
@@ -793,6 +803,42 @@ export default function SuperAdmin() {
                     onChange={(e) => setEditForm((f) => ({ ...f, plan_expires_at: e.target.value }))}
                     data-testid="edit-plan-expires" />
                 </div>
+              </div>
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Modèle IA</Label>
+                    <p className="text-xs text-muted-foreground">Par défaut, le restaurant hérite du modèle de son plan.</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Switch checked={editForm.ai_inherit}
+                      onCheckedChange={(v) => setEditForm((f) => ({ ...f, ai_inherit: v }))}
+                      data-testid="edit-ai-inherit" />
+                    <span className="text-sm">Hériter du plan</span>
+                  </div>
+                </div>
+                {!editForm.ai_inherit && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>Fournisseur</Label>
+                      <Select value={editForm.ai_provider}
+                        onValueChange={(v) => setEditForm((f) => ({ ...f, ai_provider: v }))}>
+                        <SelectTrigger data-testid="edit-ai-provider"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="gemini">Gemini</SelectItem>
+                          <SelectItem value="bytez">Bytez</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Modèle</Label>
+                      <Input value={editForm.ai_model}
+                        onChange={(e) => setEditForm((f) => ({ ...f, ai_model: e.target.value }))}
+                        placeholder={editForm.ai_provider === "bytez" ? "openai/gpt-4o" : "gemini-2.5-flash"}
+                        data-testid="edit-ai-model" />
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={saving} data-testid="edit-submit">
