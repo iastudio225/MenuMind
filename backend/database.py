@@ -10,7 +10,7 @@ import re
 import secrets
 import logging
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 
 import asyncpg
 
@@ -39,7 +39,7 @@ COLLECTIONS = (
     "password_reset_requests", "counters", "pending_registrations",
     "email_verification_tokens", "trial_eligibility", "license_operations",
     "license_history", "verification_rate_limits", "license_conversion_requests",
-    "platform_settings",
+    "platform_settings", "public_events",
 )
 
 
@@ -342,6 +342,46 @@ class Database:
             restaurant_id, today, week_start,
         )
         return dict(row)
+
+    async def dashboard_traffic_sources(self, restaurant_id: str, days: int) -> list:
+        """Visits and orders grouped by acquisition source (link attribution).
+
+        Orders store ``created_at`` inside the JSON payload (ISO-8601 text), so
+        the comparison uses the payload value, not the table column.
+        """
+        since = (datetime.now(timezone.utc) - timedelta(days=int(days))).isoformat()
+        rows = await self.pool.fetch(
+            """
+            WITH visits AS (
+                SELECT COALESCE(NULLIF(data->>'source', ''), 'direct') AS source,
+                       count(*) AS visits
+                FROM public.public_events
+                WHERE data->>'restaurant_id' = $1 AND data->>'kind' = 'visit'
+                  AND created_at >= $2::timestamptz
+                GROUP BY 1
+            ), order_stats AS (
+                SELECT COALESCE(NULLIF(data->>'source', ''), 'direct') AS source,
+                       count(*) AS orders,
+                       COALESCE(SUM(
+                           CASE WHEN data->>'total' ~ '^-?[0-9]+(\\.[0-9]+)?$'
+                                THEN (data->>'total')::numeric ELSE 0 END), 0)::bigint AS revenue
+                FROM public.orders
+                WHERE data->>'restaurant_id' = $1
+                  AND data->>'status' IS DISTINCT FROM 'CANCELLED'
+                  AND data->>'created_at' >= $3
+                GROUP BY 1
+            )
+            SELECT COALESCE(v.source, o.source) AS source,
+                   COALESCE(v.visits, 0)::bigint AS visits,
+                   COALESCE(o.orders, 0)::bigint AS orders,
+                   COALESCE(o.revenue, 0)::bigint AS revenue
+            FROM visits v
+            FULL OUTER JOIN order_stats o ON v.source = o.source
+            ORDER BY 3 DESC, 2 DESC
+            """,
+            restaurant_id, since, since,
+        )
+        return [dict(row) for row in rows]
 
     async def admin_restaurants_with_stats(self):
         """Fetch the admin restaurant list with owner and order counts in one query."""

@@ -8,7 +8,8 @@ import { Loader2, Save, Copy, ExternalLink, Share2, Plus, Trash2 } from "lucide-
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatApiErrorDetail } from "@/lib/format";
-import { buildExperienceUrl } from "@/lib/publicLinks";
+import { buildExperienceUrl, buildShareUrl } from "@/lib/publicLinks";
+import ShareQrCard from "@/components/ShareQrCard";
 import { useAuth } from "@/context/AuthContext";
 
 const DAYS = [
@@ -69,6 +70,9 @@ export default function SettingsPage() {
   const chatbotUrl = data?.public_id
     ? buildExperienceUrl(window.location.origin, data.public_id)
     : "";
+  const shareUrl = data?.public_id
+    ? buildShareUrl(window.location.origin, data.public_id, "wa")
+    : "";
 
   const copyEmbed = async () => {
     try {
@@ -81,8 +85,8 @@ export default function SettingsPage() {
 
   const copyChatbotLink = async () => {
     try {
-      await navigator.clipboard.writeText(chatbotUrl);
-      toast.success("Lien du chatbot copié");
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Lien de partage copié");
     } catch {
       toast.error("Copie impossible — sélectionnez le lien manuellement");
     }
@@ -98,7 +102,7 @@ export default function SettingsPage() {
       await navigator.share({
         title: `Chatbot de ${data.name || "votre établissement"}`,
         text: "Découvrez notre catalogue et commandez avec notre assistant.",
-        url: chatbotUrl,
+        url: shareUrl,
       });
       toast.success("Lien partagé");
     } catch (error) {
@@ -254,15 +258,15 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <h2 className="font-heading text-xl font-semibold">Votre chatbot</h2>
               <p className="text-sm text-muted-foreground">
-                Partagez ce lien avec vos clients pour leur permettre de découvrir votre catalogue et de commander directement avec votre assistant.
+                Partagez ce lien dans votre groupe WhatsApp, votre bio Instagram ou sur vos supports imprimés : il ouvre votre catalogue et attribue la source des commandes.
               </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="chatbot-public-link">Lien public</Label>
-              <Input id="chatbot-public-link" readOnly value={chatbotUrl} data-testid="chatbot-public-link" />
+              <Input id="chatbot-public-link" readOnly value={shareUrl} data-testid="chatbot-public-link" />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button onClick={copyChatbotLink} disabled={!chatbotUrl} data-testid="copy-chatbot-link">
+              <Button onClick={copyChatbotLink} disabled={!shareUrl} data-testid="copy-chatbot-link">
                 <Copy className="w-4 h-4" /> Copier le lien
               </Button>
               <Button asChild variant="outline" disabled={!chatbotUrl} data-testid="open-chatbot-link">
@@ -270,10 +274,12 @@ export default function SettingsPage() {
                   <ExternalLink className="w-4 h-4" /> Ouvrir le chatbot
                 </a>
               </Button>
-              <Button variant="outline" onClick={shareChatbotLink} disabled={!chatbotUrl} data-testid="share-chatbot-link">
+              <Button variant="outline" onClick={shareChatbotLink} disabled={!shareUrl} data-testid="share-chatbot-link">
                 <Share2 className="w-4 h-4" /> Partager
               </Button>
             </div>
+            <ShareQrCard url={data?.public_id ? buildShareUrl(window.location.origin, data.public_id, "qr") : ""}
+              publicId={data?.public_id} />
           </div>
         </TabsContent>
 

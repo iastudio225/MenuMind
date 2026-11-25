@@ -18,6 +18,7 @@ from pymongo import ReturnDocument
 from fastapi import HTTPException
 
 from models import serialize, now_iso
+from services.attribution import normalize_source
 
 ORDER_STATUSES = ["PENDING", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"]
 ORDER_TYPES = ["DELIVERY", "PICKUP", "DINE_IN"]
@@ -184,9 +185,11 @@ def _require_open_cart(cart: dict) -> None:
                             detail="Ce panier n'est plus utilisable (commande déjà passée ou fermée).")
 
 
-async def create_cart(db, restaurant_id: str, session_id: Optional[str] = None) -> dict:
+async def create_cart(db, restaurant_id: str, session_id: Optional[str] = None,
+                      source: Optional[str] = None) -> dict:
     ts = now_iso()
     doc = {"cart_id": secrets.token_urlsafe(24), "restaurant_id": restaurant_id, "session_id": session_id,
+           "source": normalize_source(source),
            "customer_id": None, "items": [], "status": "open", "created_at": ts, "updated_at": ts}
     await db.carts.insert_one(doc)
     return doc
@@ -800,6 +803,7 @@ async def create_order(db, restaurant_id: str, cart: dict, customer_data: dict,
         "dropoff_address": dropoff_address, "customer_note": customer_note or "",
         "tracking_token": secrets.token_urlsafe(16),
         "idempotency_key": idempotency_key, "created_by": created_by,
+        "source": normalize_source(cart.get("source")),
         "created_at": ts, "updated_at": ts,
     }
 

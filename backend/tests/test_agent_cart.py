@@ -372,8 +372,12 @@ def test_agent_claimed_removal_on_unknown_line_never_reports_success(harness_env
 
 
 # =============== 5. Prompt instructs the corrected tool usage ===============
-def test_prompt_documents_cumulation_and_cart_item_id(harness_env):
+def test_prompt_documents_cumulation_and_cart_item_id(harness_env, monkeypatch):
     """Repro D1.46: pre-fix the prompt said neither cumulation nor line-id rules."""
+    # This test targets the SYSTEM PROMPT, not intent routing: greetings are
+    # answered by deterministic_resolver before the provider is called, so the
+    # resolver is disabled here to guarantee the prompt is captured.
+    monkeypatch.setattr(ag.deterministic_resolver, "resolve", lambda *a, **k: None)
     h = harness_env([_j("Bonjour !")])
     h.ask("Bonjour")
     p = h.prompts[0]

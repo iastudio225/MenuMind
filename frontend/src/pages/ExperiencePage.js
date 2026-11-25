@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { getVisibleExperienceCategories } from "@/lib/experienceMenu";
 import { secteurConfig } from "@/lib/secteurs";
 import { formatApiErrorDetail, formatFCFA } from "@/lib/format";
+import { getSessionId, readSource, trackVisit } from "@/lib/attribution";
 import "@/pages/ExperiencePage.css";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -73,6 +74,11 @@ export default function ExperiencePage() {
   const publicIdRef = useRef(publicId);
   const cartIdRef = useRef(null);
   const pendingCartRef = useRef(null);
+
+  // Lien public : compte une visite par session (source wa/qr/ig/...).
+  useEffect(() => {
+    trackVisit(publicId);
+  }, [publicId]);
 
   useEffect(() => {
     let alive = true;
@@ -146,7 +152,11 @@ export default function ExperiencePage() {
     if (cartIdRef.current) return Promise.resolve(cartIdRef.current);
     if (pendingCartRef.current) return pendingCartRef.current;
     const pid = publicId;
-    pendingCartRef.current = axios.post(`${API}/public/cart`, { restaurant_public_id: pid })
+    pendingCartRef.current = axios.post(`${API}/public/cart`, {
+      restaurant_public_id: pid,
+      session_id: getSessionId(),
+      source: readSource(),
+    })
       .then(({ data }) => {
         const id = data.cart_id;
         if (publicIdRef.current === pid) {

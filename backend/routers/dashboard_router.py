@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 
@@ -37,6 +37,15 @@ async def overview(user: dict = Depends(get_current_user)):
     week_start = (now - timedelta(days=7)).isoformat()
 
     return await db.dashboard_overview(rid, today, week_start)
+
+
+@router.get("/sources")
+async def traffic_sources(days: int = Query(30, ge=1, le=365),
+                          user: dict = Depends(get_current_user)):
+    """Link attribution: visits vs orders per source (whatsapp, qr, ...)."""
+    rid = tenant_id_of(user)
+    sources = await db.dashboard_traffic_sources(rid, days)
+    return {"days": days, "sources": sources}
 
 
 @router.get("/stock-alerts")

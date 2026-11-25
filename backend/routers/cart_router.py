@@ -10,6 +10,8 @@ router = APIRouter(prefix="/public", tags=["public-cart"])
 
 class CreateCartBody(BaseModel):
     restaurant_public_id: str
+    session_id: Optional[str] = None
+    source: Optional[str] = None
 
 
 class BookingInfo(BaseModel):
@@ -55,7 +57,7 @@ async def public_zones(restaurant_public_id: str):
 @router.post("/cart")
 async def create_cart(body: CreateCartBody):
     r = await svc.get_restaurant_by_public_id(db, body.restaurant_public_id)
-    cart = await svc.create_cart(db, str(r["_id"]))
+    cart = await svc.create_cart(db, str(r["_id"]), session_id=body.session_id, source=body.source)
     return {"cart_id": cart["cart_id"], "restaurant_id": str(r["_id"])}
 
 

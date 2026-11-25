@@ -36,6 +36,10 @@ Architecture déployée : `docker-compose.yml` à la racine (backend FastAPI + f
 - `GET https://<backend>/widget.js` → **200**, `application/javascript`, contient `data-restaurant`
 - `GET https://<backend>/widget-frame.html` → **200**, `text/html`
 - `GET https://<backend>/api/` → 200 JSON `{"message": "MenuMind API"}`
+- `GET https://<frontend>/s/rest_demo_chezawa` navigateur → **302** vers `/experience/rest_demo_chezawa`
+- `curl -A "WhatsApp/2.24" https://<frontend>/s/rest_demo_chezawa` → **200** contenant `og:title="Commandez chez Chez Awa"`
+- Settings → Chatbot : lien de partage `/s/{public_id}?src=wa` + QR téléchargeable
+- Vue d'ensemble : le bloc « Provenance des commandes » se remplit après une visite et une commande
 - Frontend : connexion avec `ADMIN_EMAIL` / `ADMIN_PASSWORD`
 - Settings → Widget : snippet d'intégration avec l'URL du backend public
 

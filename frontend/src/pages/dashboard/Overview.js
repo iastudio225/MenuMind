@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import {
   ShoppingBag, TrendingUp, Clock, ChefHat, Wallet, Truck,
-  Users as UsersIcon, Sparkles, ArrowRight, Loader2,
+  Users as UsersIcon, Sparkles, ArrowRight, Loader2, Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,16 @@ import { formatFCFA } from "@/lib/format";
 import { secteurConfig } from "@/lib/secteurs";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardRestaurantContext } from "@/layouts/DashboardLayout";
+
+const SOURCE_LABELS = {
+  wa: "WhatsApp",
+  qr: "QR code",
+  ig: "Instagram",
+  fb: "Facebook",
+  web: "Site web",
+  direct: "Direct",
+  other: "Autre",
+};
 
 function StatCard({ icon: Icon, label, value, hint, tone = "neutral", testid }) {
   const tones = {
@@ -35,12 +45,19 @@ export default function Overview() {
   const [stats, setStats] = useState(null);
   const [missions, setMissions] = useState([]);
   const [stockAlerts, setStockAlerts] = useState(null);
+  const [sources, setSources] = useState(null);
   const restaurant = useContext(DashboardRestaurantContext);
   const sector = secteurConfig(restaurant?.secteur);
   const PreparingIcon = sector.value === "logistique" ? Truck : sector.value === "e-commerce" ? ShoppingBag : ChefHat;
 
   useEffect(() => {
     api.get("/dashboard/overview").then(({ data }) => setStats(data)).catch(() => setStats({}));
+  }, []);
+
+  useEffect(() => {
+    api.get("/dashboard/sources", { params: { days: 30 } })
+      .then(({ data }) => setSources(data.sources || []))
+      .catch(() => setSources([]));
   }, []);
 
   useEffect(() => {
@@ -94,6 +111,49 @@ export default function Overview() {
           tone={stats.pending ? "warning" : "neutral"} testid="stat-pending" />
         <StatCard icon={PreparingIcon} label={sector.preparingLabel} value={stats.preparing ?? 0} hint={sector.preparingHint} tone="neutral" testid="stat-preparing" />
         <StatCard icon={Wallet} label={sector.avgBasketLabel} value={formatFCFA(stats.avg_basket)} tone="positive" testid="stat-avg-basket" />
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-6 mt-5" data-testid="overview-sources-card">
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2">
+              <Share2 className="w-4 h-4 text-primary" /> Provenance des commandes
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              30 derniers jours · lien WhatsApp, QR code, réseaux sociaux
+            </p>
+          </div>
+        </div>
+        {!sources || sources.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Partagez votre lien depuis les Paramètres pour voir apparaître vos sources.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            <div className="hidden sm:grid grid-cols-5 gap-3 px-3 pb-2 text-xs font-medium text-muted-foreground">
+              <span className="col-span-2">Source</span>
+              <span className="text-right">Visites</span>
+              <span className="text-right">Commandes</span>
+              <span className="text-right">Conversion</span>
+            </div>
+            {sources.map((row) => {
+              const conversion = row.visits > 0 ? Math.round((row.orders / row.visits) * 100) : 0;
+              return (
+                <div key={row.source}
+                  className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 items-center rounded-lg border border-border px-3 py-2 text-sm"
+                  data-testid={`source-row-${row.source}`}>
+                  <span className="col-span-2 sm:col-span-2 font-medium flex items-center gap-2">
+                    {SOURCE_LABELS[row.source] || row.source}
+                    <span className="text-xs text-muted-foreground hidden sm:inline">{formatFCFA(row.revenue)}</span>
+                  </span>
+                  <span className="text-right tabular-nums">{row.visits}</span>
+                  <span className="text-right tabular-nums">{row.orders}</span>
+                  <span className="text-right tabular-nums">{row.visits > 0 ? `${conversion} %` : "—"}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {sector.value === "logistique" && (

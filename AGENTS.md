@@ -91,6 +91,14 @@ frontend/
 - **Deux endpoints catalogue divergents** : `GET /api/public/menu/{public_id}` (StoreFront + widget,
   **sans `image_url`**) vs `GET /api/menu/public/{public_id}` (avec `image_url`, sans
   `welcome_message`/`widget`).
+- **Lien public `/s/{public_id}`** : nginx (frontend) proxifie `/s/` vers `GET /share/{public_id}`
+  (backend) — un crawler reçoit les balises Open Graph, un navigateur est redirigé vers
+  `/experience/{public_id}`. Le backend construit les URLs absolues avec `FRONTEND_URL` (obligatoire
+  en production). Toute modification de `frontend/nginx.conf` exige un rebuild de l'image frontend.
+- **Attribution** : `source` (`wa|qr|ig|fb|web|direct|other`) est normalisée dans
+  `services/attribution.py`, stockée sur le panier puis copiée sur la commande. Les visites vont dans
+  la table `public_events` (migration `007_public_events.sql`, rétention 90 j non automatisée).
+  `POST /api/public/events` est public et dédupliqué par `(restaurant_id, session_id)`.
 
 ## Conventions
 

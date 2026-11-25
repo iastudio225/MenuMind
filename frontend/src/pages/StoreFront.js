@@ -11,6 +11,7 @@ import StoreChatWidget from "@/components/StoreChatWidget";
 import ItemOptionModal from "@/components/store/ItemOptionModal";
 import CheckoutDialog from "@/components/store/CheckoutDialog";
 import CartLine from "@/components/store/CartLine";
+import { getSessionId, readSource, trackVisit } from "@/lib/attribution";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 // D1.51: identifiants de session client — jamais une autorisation, seulement
@@ -44,6 +45,10 @@ export default function StoreFront() {
     ]).then(([m, z]) => { setMenu(m.data); setZones(z.data); })
       .catch(() => toast.error("Établissement introuvable"))
       .finally(() => setLoading(false));
+  }, [publicId]);
+
+  useEffect(() => {
+    trackVisit(publicId);
   }, [publicId]);
 
   // D1.51: à chaque changement de restaurant, purge de l'état local (aucune
@@ -101,7 +106,11 @@ export default function StoreFront() {
     if (cartIdRef.current) return Promise.resolve(cartIdRef.current);
     if (cartPendingRef.current) return cartPendingRef.current;
     const pid = publicId;
-    cartPendingRef.current = axios.post(`${API}/public/cart`, { restaurant_public_id: pid })
+    cartPendingRef.current = axios.post(`${API}/public/cart`, {
+      restaurant_public_id: pid,
+      session_id: getSessionId(),
+      source: readSource(),
+    })
       .then(({ data }) => {
         const cid = data.cart_id;
         if (publicIdRef.current === pid) {

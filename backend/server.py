@@ -25,7 +25,8 @@ from seed import run_seed
 from routers import (auth_router, restaurant_router, user_router, dashboard_router,
                      admin_router, menu_router, cart_router, order_router,
                      customer_router, delivery_router, ai_router, embed_router,
-                     weekly_menu_router, notification_router, knowledge_router)
+                     weekly_menu_router, notification_router, knowledge_router,
+                     share_router, public_events_router)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -79,7 +80,9 @@ app.include_router(ai_router.router, prefix="/api")
 app.include_router(ai_router.console_router, prefix="/api")
 app.include_router(notification_router.router, prefix="/api")
 app.include_router(knowledge_router.router, prefix="/api")
+app.include_router(public_events_router.router, prefix="/api")
 app.include_router(embed_router.router)
+app.include_router(share_router.router)
 
 _origins = cors_origins(os.environ)
 
