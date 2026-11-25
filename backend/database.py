@@ -115,7 +115,7 @@ class Collection:
             for op, operand in value.items():
                 expr = _path_expr(path)
                 if op == "$exists":
-                    terms.append(f"(data #> '{{{path}}}' IS {'NOT ' if operand else ''}NULL")
+                    terms.append(f"(data #> '{{{path}}}' IS {'NOT ' if operand else ''}NULL)")
                 elif op in ("$ne", "$gt", "$gte", "$lt", "$lte"):
                     sqlop = {"$ne":"IS DISTINCT FROM", "$gt":">", "$gte":">=", "$lt":"<", "$lte":"<="}[op]
                     args.append(str(operand)); terms.append(f"{expr} {sqlop} ${len(args)}")
