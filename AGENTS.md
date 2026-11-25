@@ -79,6 +79,10 @@ frontend/
   sinon les cookies ne sont jamais renvoyés.
 - **`REACT_APP_BACKEND_URL` sans slash final** : un slash crée des URLs doubles (`//api/`) qui cassent CORS.
 - **Widget routes** : `/widget.js` et `/widget-frame.html` sont à la racine du backend (pas sous `/api`).
+  Le snippet accepte `data-business` (recommandé) et `data-restaurant` (alias historique).
+- **Logo** : champ `logo` = URL http(s) **ou** data URL `image/*` (téléversement redimensionné à 512 px
+  côté frontend, plafond ~300 Ko côté backend). Aucun stockage de fichiers ; l'aperçu OG ignore les
+  data URLs et retombe sur `og-default.png`.
 - **Tripwires IA** : ne pas modifier `gemini_provider.get_default_provider` ni `bytez_provider.provider_from_env`.
 - **Soft-delete** : `status="deleted"` — exclu des listes/métriques/menu public. Les routes publiques
   filtrent déjà `status: "active"`.

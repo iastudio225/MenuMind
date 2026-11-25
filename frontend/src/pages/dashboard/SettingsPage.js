@@ -9,7 +9,9 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatApiErrorDetail } from "@/lib/format";
 import { buildExperienceUrl, buildShareUrl } from "@/lib/publicLinks";
+import { secteurConfig } from "@/lib/secteurs";
 import ShareQrCard from "@/components/ShareQrCard";
+import LogoField from "@/components/LogoField";
 import { useAuth } from "@/context/AuthContext";
 
 const DAYS = [
@@ -65,7 +67,7 @@ export default function SettingsPage() {
   };
 
   const embedCode = data
-    ? `<script src="${process.env.REACT_APP_BACKEND_URL}/widget.js"\n  data-restaurant="${data.public_id}"></script>`
+    ? `<script src="${process.env.REACT_APP_BACKEND_URL}/widget.js"\n  data-business="${data.public_id}"></script>`
     : "";
   const chatbotUrl = data?.public_id
     ? buildExperienceUrl(window.location.origin, data.public_id)
@@ -165,6 +167,7 @@ export default function SettingsPage() {
     }
   };
   if (!data) return <div className="grid place-items-center py-20"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
+  const sector = secteurConfig(data.secteur);
 
   return (
     <div className="max-w-3xl">
@@ -182,7 +185,9 @@ export default function SettingsPage() {
         <TabsContent value="restaurant" className="mt-6">
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <div className="space-y-2"><Label>Nom</Label><Input disabled={readOnly} value={data.name || ""} onChange={set("name")} data-testid="settings-name" /></div>
-            <div className="space-y-2"><Label>Description</Label><Textarea disabled={readOnly} rows={3} value={data.description || ""} onChange={set("description")} data-testid="settings-description" /></div>
+            <div className="space-y-2"><Label>Description</Label><Textarea disabled={readOnly} rows={3} placeholder={sector.descriptionPlaceholder} value={data.description || ""} onChange={set("description")} data-testid="settings-description" /></div>
+            <LogoField label="Logo" disabled={readOnly} value={data.logo || ""} testId="settings-logo"
+              onChange={(logo) => setData((d) => ({ ...d, logo }))} />
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Téléphone</Label><Input disabled={readOnly} value={data.phone || ""} onChange={set("phone")} data-testid="settings-phone" /></div>
               <div className="space-y-2"><Label>WhatsApp</Label><Input disabled={readOnly} value={data.whatsapp || ""} onChange={set("whatsapp")} data-testid="settings-whatsapp" /></div>
@@ -192,7 +197,7 @@ export default function SettingsPage() {
               <div className="space-y-2"><Label>Devise</Label><Input disabled={readOnly} value={data.currency || ""} onChange={set("currency")} data-testid="settings-currency" /></div>
             </div>
             {!readOnly && (
-              <Button onClick={() => save(["name", "description", "phone", "whatsapp", "city", "currency"])} disabled={saving} data-testid="save-restaurant-button">
+              <Button onClick={() => save(["name", "description", "logo", "phone", "whatsapp", "city", "currency"])} disabled={saving} data-testid="save-restaurant-button">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1" /> Enregistrer</>}
               </Button>
             )}

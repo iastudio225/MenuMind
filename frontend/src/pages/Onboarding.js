@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import { formatApiErrorDetail } from "@/lib/format";
 import { secteurConfig } from "@/lib/secteurs";
+import LogoField from "@/components/LogoField";
 
 const STEPS = [
   { key: "identity", label: "Identité", icon: Store },
@@ -90,12 +91,10 @@ export default function Onboarding() {
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea value={form.description} onChange={set("description")} rows={3}
-                  placeholder="Maquis ivoirien — grillades, poissons et plats traditionnels." data-testid="onboarding-description-input" />
+                  placeholder={secteur.descriptionPlaceholder} data-testid="onboarding-description-input" />
               </div>
-              <div className="space-y-2">
-                <Label>Logo (URL)</Label>
-                <Input value={form.logo} onChange={set("logo")} placeholder="https://..." data-testid="onboarding-logo-input" />
-              </div>
+              <LogoField value={form.logo} onChange={(logo) => setForm((f) => ({ ...f, logo }))}
+                testId="onboarding-logo" />
             </>
           )}
           {step === 1 && (

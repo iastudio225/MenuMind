@@ -386,7 +386,7 @@ export default function SuperAdmin() {
   const copyWidget = (publicId) => {
     const backend = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
     navigator.clipboard.writeText(
-      `<script src="${backend}/widget.js"\n  data-restaurant="${publicId}"></script>`
+      `<script src="${backend}/widget.js"\n  data-business="${publicId}"></script>`
     ).then(() => toast.success("Snippet du widget copié"));
   };
 

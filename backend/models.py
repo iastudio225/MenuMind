@@ -127,6 +127,23 @@ class RestaurantUpdate(BaseModel):
     def _secteur_valide(cls, value):
         return validate_secteur(value)
 
+    @field_validator("logo")
+    @classmethod
+    def _logo_valide(cls, value):
+        """Accept a public http(s) URL or an uploaded image (browser data URL)."""
+        if value is None:
+            return None
+        logo = value.strip()
+        if not logo:
+            return ""
+        if len(logo) > 400_000:
+            raise ValueError("Logo trop volumineux (max ~300 Ko)")
+        if logo.startswith(("http://", "https://")):
+            return logo
+        if re.match(r"^data:image/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=\s]+$", logo):
+            return logo
+        raise ValueError("Logo invalide : URL http(s) ou image téléversée")
+
 
 class UserCreate(BaseModel):
     name: str = Field(min_length=1)

@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Pencil, Trash2, ChevronUp, ChevronDown, Search, Loader2, Check, X,
   ExternalLink, UtensilsCrossed, ListChecks, Image as ImageIcon, Layers,
+  Truck, ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
@@ -33,6 +34,8 @@ export default function MenuPage() {
   const { user } = useAuth();
   const restaurant = useContext(DashboardRestaurantContext);
   const sector = secteurConfig(restaurant?.secteur);
+  const CatalogueIcon = sector.value === "logistique" ? Truck
+    : sector.value === "e-commerce" ? ShoppingBag : UtensilsCrossed;
   const canManage = user?.role === "RESTAURANT_OWNER" || user?.role === "RESTAURANT_MANAGER";
 
   const [loading, setLoading] = useState(true);
@@ -133,7 +136,7 @@ export default function MenuPage() {
 
       <Tabs defaultValue="catalogue">
         <TabsList data-testid="menu-tabs">
-          <TabsTrigger value="catalogue" data-testid="tab-catalogue"><UtensilsCrossed className="w-4 h-4 mr-1" /> Catalogue</TabsTrigger>
+          <TabsTrigger value="catalogue" data-testid="tab-catalogue"><CatalogueIcon className="w-4 h-4 mr-1" /> Catalogue</TabsTrigger>
           <TabsTrigger value="options" data-testid="tab-options"><ListChecks className="w-4 h-4 mr-1" /> Groupes d'options</TabsTrigger>
         </TabsList>
 

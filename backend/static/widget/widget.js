@@ -1,11 +1,12 @@
 /* MenuMind — chargeur du widget embarquable.
-   Usage : <script src="https://API_ORIGIN/widget.js" data-restaurant="rest_xxx"></script>
+   Usage : <script src="https://API_ORIGIN/widget.js" data-business="rest_xxx"></script>
+   "data-restaurant" reste accepté pour les intégrations existantes.
    Chaque balise script = un widget isolé (iframe same-origin API, zéro conflit CSS/JS hôte). */
 (function () {
   "use strict";
   var script = document.currentScript;
   if (!script) return;
-  var restaurantId = script.getAttribute("data-restaurant");
+  var restaurantId = script.getAttribute("data-business") || script.getAttribute("data-restaurant");
   if (!restaurantId) return;
   var apiOrigin;
   try {
