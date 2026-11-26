@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,13 +6,13 @@
 
 body {
     margin: 0;
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, .font-heading {
-    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .font-mono {
@@ -21,24 +21,26 @@ h1, h2, h3, h4, h5, .font-heading {
 
 @layer base {
     :root {
-        --background: 38 38% 96%;
-        --foreground: 222 47% 11%;
+        --background: 23 100% 97.5%;
+        --foreground: 215 69% 13.7%;
         --card: 0 0% 100%;
-        --card-foreground: 222 47% 11%;
+        --card-foreground: 215 69% 13.7%;
         --popover: 0 0% 100%;
-        --popover-foreground: 222 47% 11%;
+        --popover-foreground: 215 69% 13.7%;
         --primary: 11 73% 55%;
         --primary-foreground: 0 0% 100%;
+        --primary-ink: 12 64% 37.3%;
+        --peach: 20 100% 79%;
         --secondary: 40 25% 94%;
-        --secondary-foreground: 222 47% 11%;
+        --secondary-foreground: 215 69% 13.7%;
         --muted: 40 20% 93%;
         --muted-foreground: 215 16% 47%;
         --accent: 40 25% 94%;
-        --accent-foreground: 222 47% 11%;
+        --accent-foreground: 215 69% 13.7%;
         --destructive: 0 72% 51%;
         --destructive-foreground: 0 0% 100%;
-        --border: 214 32% 91%;
-        --input: 214 32% 91%;
+        --border: 220 13% 91%;
+        --input: 220 13% 91%;
         --ring: 11 73% 55%;
         --chart-1: 11 73% 55%;
         --chart-2: 160 84% 39%;

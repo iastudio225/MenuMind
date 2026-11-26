@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .experience-device {
@@ -83,7 +83,7 @@
 .experience-logo { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; overflow: hidden; border-radius: 14px; color: var(--experience-primary, #E05638); background: #fff; }
 .experience-logo img { width: 100%; height: 100%; object-fit: contain; }
 .experience-brand-copy { min-width: 0; }
-.experience-brand-copy h1 { overflow: hidden; margin: 2px 0 0; color: white; font: 700 16px/1.2 "Outfit", "Plus Jakarta Sans", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.experience-brand-copy h1 { overflow: hidden; margin: 2px 0 0; color: white; font: 700 16px/1.2 "Inter", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .experience-eyebrow { margin: 0; color: #9ca3af; font-size: 9px; font-weight: 700; letter-spacing: .13em; }
 .experience-brand-copy .experience-eyebrow { color: rgba(255,255,255,.62); }
 .experience-header-cart { position: relative; display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.18); border-radius: 14px; color: white; background: rgba(255,255,255,.08); cursor: pointer; }
@@ -98,7 +98,7 @@
 .experience-welcome-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 18px; border-radius: 15px; color: var(--experience-primary); background: color-mix(in srgb, var(--experience-primary) 12%, white); }
 .experience-welcome-icon svg { width: 20px; }
 .experience-welcome-card .experience-eyebrow, .experience-section-heading .experience-eyebrow, .experience-page-title .experience-eyebrow { color: var(--experience-primary); }
-.experience-welcome-card h2, .experience-page-title h2, .experience-section-heading h2 { margin: 5px 0 0; color: #172033; font: 700 25px/1.12 "Outfit", "Plus Jakarta Sans", sans-serif; letter-spacing: -.025em; }
+.experience-welcome-card h2, .experience-page-title h2, .experience-section-heading h2 { margin: 5px 0 0; color: #172033; font: 700 25px/1.12 "Inter", sans-serif; letter-spacing: -.025em; }
 .experience-welcome-card > p:not(.experience-eyebrow) { margin: 9px 0 0; color: #647084; font-size: 13px; line-height: 1.6; }
 .experience-home-actions { display: grid; gap: 10px; margin-top: 18px; }
 .experience-home-actions > button:first-child, .experience-checkout-button, .experience-confirmation-button { min-height: 46px; justify-content: center; border: 0; border-radius: 14px; color: white; background: var(--experience-primary); font-weight: 700; }
@@ -116,12 +116,12 @@
 .experience-page-title h2 { font-size: 26px; }
 .experience-page-title > p:last-child { margin: 7px 0 0; color: #758094; font-size: 12px; line-height: 1.5; }
 .experience-category + .experience-category { margin-top: 24px; }
-.experience-category h3 { margin: 0 0 10px; color: #263247; font: 700 17px/1.2 "Outfit", sans-serif; }
+.experience-category h3 { margin: 0 0 10px; color: #263247; font: 700 17px/1.2 "Inter", sans-serif; }
 .experience-product { display: flex; min-height: 96px; overflow: hidden; border: 1px solid #eee9e1; border-radius: 17px; background: white; box-shadow: 0 5px 14px rgba(40, 35, 27, .035); }
 .experience-product > img, .experience-product-placeholder { display: grid; place-items: center; width: 92px; min-height: 96px; flex: 0 0 92px; object-fit: cover; color: #aab1bd; background: #f1eee8; }
 .experience-product-placeholder svg { width: 22px; height: 22px; }
 .experience-product-info { position: relative; display: flex; min-width: 0; flex: 1; flex-direction: column; align-items: flex-start; justify-content: center; padding: 11px 52px 11px 13px; }
-.experience-product-info h3 { overflow: hidden; width: 100%; margin: 0; color: #182235; font: 700 14px/1.25 "Outfit", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.experience-product-info h3 { overflow: hidden; width: 100%; margin: 0; color: #182235; font: 700 14px/1.25 "Inter", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .experience-product-info p { display: -webkit-box; overflow: hidden; margin: 4px 0 0; color: #7a8495; font-size: 10px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .experience-product-options { display: block; overflow: hidden; max-width: 100%; margin-top: 4px; color: #8a6c59; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .experience-product-info strong { margin-top: 6px; color: #263247; font-size: 12px; }
@@ -144,7 +144,7 @@
 .experience-empty { display: flex; flex-direction: column; align-items: center; padding: 42px 16px 28px; text-align: center; }
 .experience-empty > span { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 18px; color: var(--experience-primary); background: color-mix(in srgb, var(--experience-primary) 11%, white); }
 .experience-empty > span svg { width: 22px; }
-.experience-empty h3 { margin: 14px 0 0; color: #263247; font: 700 18px "Outfit", sans-serif; }
+.experience-empty h3 { margin: 14px 0 0; color: #263247; font: 700 18px "Inter", sans-serif; }
 .experience-empty p { max-width: 280px; margin: 7px 0 0; color: #758094; font-size: 12px; line-height: 1.55; }
 .experience-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
 .experience-empty-actions button { min-height: 39px; border-radius: 12px; }
@@ -161,7 +161,7 @@
 .experience-confirmation-check { display: grid; place-items: center; width: 58px; height: 58px; margin: 0 auto 16px; border-radius: 20px; color: white; background: #3d9872; }
 .experience-confirmation-check svg { width: 27px; height: 27px; }
 .experience-confirmation > .experience-eyebrow { color: #3d9872; }
-.experience-confirmation h2 { margin: 7px 0 0; color: #172033; font: 700 24px/1.1 "Outfit", sans-serif; }
+.experience-confirmation h2 { margin: 7px 0 0; color: #172033; font: 700 24px/1.1 "Inter", sans-serif; }
 .experience-confirmation-copy { margin: 8px 0 19px; color: #738093; font-size: 12px; }
 .experience-order-reference, .experience-order-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #f0ece5; text-align: left; }
 .experience-order-reference span, .experience-order-total span { color: #758094; font-size: 11px; }
@@ -173,7 +173,7 @@
 .experience-confirmation-button { width: 100%; margin-top: 19px; }
 
 .experience-state { display: flex; min-height: 100vh; min-height: 100dvh; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; color: #536074; background: #f7f3eb; text-align: center; }
-.experience-state h1 { margin: 3px 0 0; color: var(--experience-secondary); font: 700 24px "Outfit", sans-serif; }
+.experience-state h1 { margin: 3px 0 0; color: var(--experience-secondary); font: 700 24px "Inter", sans-serif; }
 .experience-state p { margin: 0; font-size: 13px; }
 .experience-spinner { width: 26px; height: 26px; border: 3px solid #e8ddd0; border-top-color: var(--experience-primary); border-radius: 50%; animation: experience-spin .75s linear infinite; }
 @keyframes experience-spin { to { transform: rotate(360deg); } }

@@ -29,6 +29,8 @@ module.exports = {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))'
         },
+        "primary-ink": 'hsl(var(--primary-ink))',
+        peach: 'hsl(var(--peach))',
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))'

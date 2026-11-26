@@ -39,15 +39,22 @@ export default function ResetPassword() {
       footer={<Link to="/login" className="text-primary font-medium" data-testid="reset-back-login-link">Retour à la connexion</Link>}
     >
       {!token ? (
-        <p className="text-sm text-destructive" data-testid="reset-no-token">Lien invalide. Veuillez redemander un lien de réinitialisation.</p>
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          data-testid="reset-no-token">
+          Lien invalide. Veuillez redemander un lien de réinitialisation.
+        </p>
       ) : (
         <form onSubmit={submit} className="space-y-5" data-testid="reset-form">
           <div className="space-y-2">
             <Label htmlFor="password">Nouveau mot de passe</Label>
-            <Input id="password" type="password" required minLength={6} value={password}
-              onChange={(e) => setPassword(e.target.value)} placeholder="Minimum 6 caractères" data-testid="reset-password-input" />
+            <Input id="password" type="password" required minLength={6} autoComplete="new-password"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimum 6 caractères" className="h-11" data-testid="reset-password-input" />
           </div>
-          {error && <p className="text-sm text-destructive" data-testid="reset-error">{error}</p>}
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              data-testid="reset-error">{error}</div>
+          )}
           <Button type="submit" className="w-full h-11" disabled={loading} data-testid="reset-submit-button">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Réinitialiser"}
           </Button>

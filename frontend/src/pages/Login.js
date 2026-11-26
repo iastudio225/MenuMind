@@ -33,24 +33,29 @@ export default function Login() {
   return (
     <AuthShell
       title="Connexion"
-      subtitle="Accédez à votre tableau de bord restaurant."
+      subtitle="Accédez à l'espace de gestion de votre entreprise."
       footer={<>Pas encore de compte ? <Link to="/register" className="text-primary font-medium" data-testid="go-register-link">Créer un compte</Link></>}
     >
       <form onSubmit={submit} className="space-y-5" data-testid="login-form">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@restaurant.ci" data-testid="login-email-input" />
+          <Input id="email" type="email" required autoComplete="email" value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="vous@entreprise.ci" className="h-11" data-testid="login-email-input" />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Mot de passe</Label>
             <Link to="/forgot-password" className="text-xs text-primary" data-testid="forgot-password-link">Mot de passe oublié ?</Link>
           </div>
-          <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••" data-testid="login-password-input" />
+          <Input id="password" type="password" required autoComplete="current-password" value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••" className="h-11" data-testid="login-password-input" />
         </div>
-        {error && <p className="text-sm text-destructive" data-testid="login-error">{error}</p>}
+        {error && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+            data-testid="login-error">{error}</div>
+        )}
         <Button type="submit" className="w-full h-11" disabled={loading} data-testid="login-submit-button">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Se connecter"}
         </Button>

@@ -1,0 +1,15 @@
+# Le crawl des pages privées est évité ici, mais la désindexation réelle est
+# portée par l'en-tête X-Robots-Tag (voir frontend/nginx.conf). robots.txt
+# n'est pas un mécanisme de sécurité.
+
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+
+Sitemap: https://menumind.cooldigital.africa/sitemap.xml

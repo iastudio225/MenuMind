@@ -35,8 +35,8 @@ export default function ForgotPassword() {
       footer={<Link to="/login" className="text-primary font-medium" data-testid="back-to-login-link">Retour à la connexion</Link>}
     >
       {sent ? (
-        <div className="rounded-xl border border-border bg-card p-6 text-center" data-testid="forgot-success">
-          <MailCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+        <div className="rounded-xl border border-border bg-secondary/40 p-6 text-center" data-testid="forgot-success">
+          <MailCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">
             Si cet email est enregistré, un lien de réinitialisation vous a été envoyé. Vérifiez votre boîte de réception.
           </p>
@@ -45,10 +45,15 @@ export default function ForgotPassword() {
         <form onSubmit={submit} className="space-y-5" data-testid="forgot-form">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="vous@restaurant.ci" data-testid="forgot-email-input" />
+            <Input id="email" type="email" required autoComplete="email" value={email}
+              onChange={(e) => setEmail(e.target.value)} placeholder="vous@entreprise.ci"
+              className="h-11" data-testid="forgot-email-input" />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <Button type="submit" className="w-full h-11" disabled={loading} data-testid="forgot-submit-button">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Envoyer le lien"}
           </Button>
