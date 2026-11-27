@@ -1,25 +1,30 @@
 import React from "react";
 
 /**
- * AVENIQ horizontal brand mark (foundation component).
+ * AVENIQ horizontal brand mark.
  *
  * - `light` : transparent PNG/WebP with the dark wordmark, for light surfaces
  *   (landing header/footer, dashboard sidebar, admin header, auth mobile).
- * - `dark`  : wordmark on the brand navy background, for dark panels
+ * - `dark`  : white wordmark inside the official navy card, for dark panels
  *   (auth left panel, dark CTA blocks).
  *
- * Intrinsic size is 720x240; callers set the rendered height with `className`
- * (e.g. "h-8", "h-9"). The original brand-kit files stay untouched in
- * `public/brand/logos/`.
+ * Assets come from the official 2026 kit. They are raster preview crops, not
+ * vector files; the web derivatives in `public/brand/kit-2026/optimized/` only
+ * remove the preview background. See `public/brand/kit-2026/README-INSTALL.md`.
+ * Callers set the rendered height with `className` (e.g. "h-8", "h-9").
  */
 const LOGOS = {
   light: {
-    webp: "/brand/optimized/logo-light-720.webp",
-    png: "/brand/optimized/logo-light-720.png",
+    webp: "/brand/kit-2026/optimized/logo-horizontal-light.webp",
+    png: "/brand/kit-2026/optimized/logo-horizontal-light.png",
+    width: 303,
+    height: 88,
   },
   dark: {
-    webp: "/brand/optimized/logo-dark-720.webp",
-    png: "/brand/optimized/logo-dark-720.png",
+    webp: "/brand/kit-2026/optimized/logo-horizontal-dark.webp",
+    png: "/brand/kit-2026/optimized/logo-horizontal-dark.png",
+    width: 330,
+    height: 118,
   },
 };
 
@@ -33,8 +38,8 @@ export default function AveniqBrand({
   return (
     <picture>
       <source srcSet={logo.webp} type="image/webp" />
-      <img src={logo.png} alt={alt} width={720} height={240} decoding="async"
-        className={`w-auto ${className}`} data-testid={testId} />
+      <img src={logo.png} alt={alt} width={logo.width} height={logo.height} decoding="async"
+        className={`w-auto shrink-0 ${className}`} data-testid={testId} />
     </picture>
   );
 }

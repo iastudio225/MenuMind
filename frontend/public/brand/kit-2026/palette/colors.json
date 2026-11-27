@@ -1,0 +1,46 @@
+{
+  "Bleu nuit": {
+    "hex": "#0B1F3B",
+    "usage": "Principal, fonds"
+  },
+  "Terracotta": {
+    "hex": "#E05638",
+    "usage": "Accent, CTA"
+  },
+  "Pêche": {
+    "hex": "#FFB894",
+    "usage": "Surbrillance, états"
+  },
+  "Ivoire": {
+    "hex": "#FFF7F2",
+    "usage": "Fonds neutres"
+  },
+  "Ardoise": {
+    "hex": "#64748B",
+    "usage": "Textes secondaires"
+  },
+  "Bordure": {
+    "hex": "#E5E7EB",
+    "usage": "Contours, séparateurs"
+  },
+  "Primary-ink": {
+    "hex": "#9C3B22",
+    "usage": "Accent sombre"
+  },
+  "Success": {
+    "hex": "#16A34A",
+    "usage": "Succès"
+  },
+  "Warning": {
+    "hex": "#F59E0B",
+    "usage": "Avertissement"
+  },
+  "Info": {
+    "hex": "#3B82F6",
+    "usage": "Information"
+  },
+  "Destructive": {
+    "hex": "#DC2626",
+    "usage": "Actions destructives"
+  }
+}

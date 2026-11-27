@@ -1,0 +1,14 @@
+:root {
+  --aveniq-bleu-nuit: #0B1F3B; /* Principal, fonds */
+  --aveniq-terracotta: #E05638; /* Accent, CTA */
+  --aveniq-pêche: #FFB894; /* Surbrillance, états */
+  --aveniq-ivoire: #FFF7F2; /* Fonds neutres */
+  --aveniq-ardoise: #64748B; /* Textes secondaires */
+  --aveniq-bordure: #E5E7EB; /* Contours, séparateurs */
+  --aveniq-primary-ink: #9C3B22; /* Accent sombre */
+  --aveniq-success: #16A34A; /* Succès */
+  --aveniq-warning: #F59E0B; /* Avertissement */
+  --aveniq-info: #3B82F6; /* Information */
+  --aveniq-destructive: #DC2626; /* Actions destructives */
+  --aveniq-font-family: Inter, sans-serif;
+}

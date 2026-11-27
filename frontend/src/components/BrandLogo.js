@@ -13,7 +13,7 @@ export default function BrandLogo({ size = "lg", className = "" }) {
   const s = SIZES[size] || SIZES.lg;
   return (
     <span className={`block shrink-0 overflow-hidden ${s} ${className}`} data-testid="brand-logo-icon">
-      <img src="/brand/icons/aveniq-icon-96.png" alt="" width={96} height={96}
+      <img src="/brand/kit-2026/optimized/app-icon-96.png" alt="" width={96} height={96}
         className="h-full w-full object-cover" />
     </span>
   );

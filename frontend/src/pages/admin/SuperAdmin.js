@@ -396,7 +396,7 @@ export default function SuperAdmin() {
     <div className="min-h-screen bg-background">
       <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-8">
         <div className="flex items-center gap-2 font-heading font-bold text-lg">
-          <AveniqBrand variant="light" className="h-8" testId="brand-logo-icon" alt="" />
+          <AveniqBrand variant="light" className="h-7 sm:h-8" testId="brand-logo-icon" alt="" />
           <span className="text-muted-foreground font-normal text-sm">· Super Admin</span>
         </div>
         <div className="flex items-center gap-3">

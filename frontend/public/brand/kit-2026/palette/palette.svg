@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720"><rect width="100%" height="100%" fill="#fff"/>
+<rect x="40" y="40" width="300" height="110" rx="16" fill="#0B1F3B"/><text x="40" y="175" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Bleu nuit · #0B1F3B</text>
+<rect x="390" y="40" width="300" height="110" rx="16" fill="#E05638"/><text x="390" y="175" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Terracotta · #E05638</text>
+<rect x="740" y="40" width="300" height="110" rx="16" fill="#FFB894"/><text x="740" y="175" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Pêche · #FFB894</text>
+<rect x="40" y="210" width="300" height="110" rx="16" fill="#FFF7F2"/><text x="40" y="345" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Ivoire · #FFF7F2</text>
+<rect x="390" y="210" width="300" height="110" rx="16" fill="#64748B"/><text x="390" y="345" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Ardoise · #64748B</text>
+<rect x="740" y="210" width="300" height="110" rx="16" fill="#E5E7EB"/><text x="740" y="345" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Bordure · #E5E7EB</text>
+<rect x="40" y="380" width="300" height="110" rx="16" fill="#9C3B22"/><text x="40" y="515" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Primary-ink · #9C3B22</text>
+<rect x="390" y="380" width="300" height="110" rx="16" fill="#16A34A"/><text x="390" y="515" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Success · #16A34A</text>
+<rect x="740" y="380" width="300" height="110" rx="16" fill="#F59E0B"/><text x="740" y="515" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Warning · #F59E0B</text>
+<rect x="40" y="550" width="300" height="110" rx="16" fill="#3B82F6"/><text x="40" y="685" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Info · #3B82F6</text>
+<rect x="390" y="550" width="300" height="110" rx="16" fill="#DC2626"/><text x="390" y="685" font-family="Inter,Arial,sans-serif" font-size="20" fill="#0B1F3B">Destructive · #DC2626</text>
+</svg>
