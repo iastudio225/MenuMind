@@ -230,7 +230,7 @@ export default function StoreFront() {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <header className="shrink-0 bg-[#0F172A] text-white">
+      <header className="shrink-0 bg-foreground text-white">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-4">
           <span className="w-12 h-12 rounded-xl bg-primary grid place-items-center overflow-hidden">
             {menu.restaurant.logo ? <img src={menu.restaurant.logo} alt="" className="w-full h-full object-cover" /> : <Bot className="w-6 h-6" />}
@@ -346,7 +346,7 @@ export default function StoreFront() {
               onClick={() => setActiveTab(id)}
               data-testid={`store-tab-${id}`}
               aria-current={activeTab === id ? "page" : undefined}
-              className={`relative flex flex-col items-center gap-0.5 py-2 text-xs font-medium ${activeTab === id ? "text-primary" : "text-muted-foreground"}`}
+              className={`relative flex flex-col items-center gap-0.5 py-2 text-xs font-medium ${activeTab === id ? "text-primary-ink" : "text-muted-foreground"}`}
             >
               <span className="relative">
                 {icon}

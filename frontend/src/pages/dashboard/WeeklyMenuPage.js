@@ -198,7 +198,7 @@ export default function WeeklyMenuPage() {
             <button key={key} onClick={() => setSel(key)} disabled={locked}
               data-testid={`week-day-${key}`}
               className={`px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors flex items-center gap-2 disabled:opacity-60 ${
-                sel === key ? "bg-primary text-primary-foreground border-primary"
+                sel === key ? "bg-primary-ink text-white border-primary-ink"
                   : "bg-card border-border hover:bg-secondary"}`}>
               {dayDirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Modifications non enregistrées" />}
               {label}

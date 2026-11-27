@@ -179,7 +179,7 @@ export default function StoreChatWidget({
             : "fixed inset-x-3 bottom-44 z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[24rem]"}
         >
           {!hideHeader && (
-            <div className="flex items-center gap-3 border-b border-border bg-[#0F172A] px-4 py-3 text-white">
+            <div className="flex items-center gap-3 border-b border-border bg-foreground px-4 py-3 text-white">
               <span className="w-9 h-9 rounded-full bg-primary grid place-items-center">
                 <Bot className="w-5 h-5" />
               </span>
@@ -219,7 +219,7 @@ export default function StoreChatWidget({
             {messages.map((m, i) =>
               m.role === "user" ? (
                 <div key={i} className="flex justify-end" data-testid="chat-message-user">
-                  <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground whitespace-pre-wrap">
+                  <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary-ink px-3 py-2 text-sm text-white whitespace-pre-wrap">
                     {m.content}
                   </p>
                 </div>

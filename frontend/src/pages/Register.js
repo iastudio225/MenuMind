@@ -40,7 +40,7 @@ export default function Register() {
     <AuthShell
       title="Créer votre compte"
       subtitle="Lancez votre assistant IA en quelques minutes."
-      footer={<>Déjà inscrit ? <Link to="/login" className="text-primary font-medium" data-testid="go-login-link">Se connecter</Link></>}
+      footer={<>Déjà inscrit ? <Link to="/login" className="text-primary-ink font-medium" data-testid="go-login-link">Se connecter</Link></>}
     >
       <form onSubmit={submit} className="space-y-4" data-testid="register-form">
         <div className="space-y-2">
@@ -87,10 +87,11 @@ export default function Register() {
             className="h-11" data-testid="register-password-input" />
         </div>
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          <div role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
             data-testid="register-error">{error}</div>
         )}
-        <Button type="submit" className="w-full h-11" disabled={loading} data-testid="register-submit-button">
+        <Button type="submit" className="w-full h-11 bg-primary-ink hover:bg-primary-ink/90" disabled={loading} data-testid="register-submit-button">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : `Créer mon compte ${secteur.businessNoun}`}
         </Button>
       </form>

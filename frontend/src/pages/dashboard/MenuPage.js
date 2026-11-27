@@ -221,7 +221,7 @@ export default function MenuPage() {
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPriceEdit({ id: null, value: "" })}><X className="w-4 h-4" /></Button>
                       </div>
                     ) : (
-                      <button className="font-mono text-sm font-semibold w-28 text-right hover:text-primary disabled:hover:text-foreground"
+                      <button className="font-mono text-sm font-semibold w-28 text-right hover:text-primary-ink disabled:hover:text-foreground"
                         disabled={!canManage} onClick={() => setPriceEdit({ id: it.id, value: String(it.price) })}
                         data-testid={`price-display-${it.id}`}>
                         {formatFCFA(it.price)}

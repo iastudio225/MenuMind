@@ -160,7 +160,7 @@ export default function Overview() {
         <div className="bg-card border border-border rounded-2xl p-6 mt-5" data-testid="overview-missions">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold flex items-center gap-2"><Truck className="w-4 h-4 text-primary" /> Missions en cours</h3>
-            <Link to="/dashboard/orders" className="text-sm text-primary font-medium">Tout voir →</Link>
+            <Link to="/dashboard/orders" className="text-sm text-primary-ink font-medium">Tout voir →</Link>
           </div>
           {missions.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucune mission active.</p>
@@ -187,7 +187,7 @@ export default function Overview() {
         <div className="bg-card border border-border rounded-2xl p-6 mt-5" data-testid="overview-stock-alerts">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold flex items-center gap-2"><ShoppingBag className="w-4 h-4 text-primary" /> Alertes stock</h3>
-            <Link to="/dashboard/menu" className="text-sm text-primary font-medium">Gérer →</Link>
+            <Link to="/dashboard/menu" className="text-sm text-primary-ink font-medium">Gérer →</Link>
           </div>
           {!stockAlerts || !stockAlerts.alerts?.length ? (
             <p className="text-sm text-muted-foreground">Aucune alerte : tous les stocks sont suffisants.</p>
@@ -223,7 +223,7 @@ export default function Overview() {
             <Link to="/dashboard/users"><Button variant="outline" className="mt-4" data-testid="overview-manage-users">Gérer l'équipe</Button></Link>
           )}
         </div>
-        <div className="bg-[#0F172A] text-white rounded-2xl p-6 relative overflow-hidden">
+        <div className="bg-foreground text-white rounded-2xl p-6 relative overflow-hidden">
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-primary/30 blur-3xl" />
           <h3 className="font-semibold mb-2 flex items-center gap-2 relative z-10"><Sparkles className="w-4 h-4 text-primary" /> {sector.ctaTitle}</h3>
           <p className="text-sm text-white/70 relative z-10">

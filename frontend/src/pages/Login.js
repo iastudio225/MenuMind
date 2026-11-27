@@ -34,7 +34,7 @@ export default function Login() {
     <AuthShell
       title="Connexion"
       subtitle="Accédez à l'espace de gestion de votre entreprise."
-      footer={<>Pas encore de compte ? <Link to="/register" className="text-primary font-medium" data-testid="go-register-link">Créer un compte</Link></>}
+      footer={<>Pas encore de compte ? <Link to="/register" className="text-primary-ink font-medium" data-testid="go-register-link">Créer un compte</Link></>}
     >
       <form onSubmit={submit} className="space-y-5" data-testid="login-form">
         <div className="space-y-2">
@@ -46,17 +46,18 @@ export default function Login() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Mot de passe</Label>
-            <Link to="/forgot-password" className="text-xs text-primary" data-testid="forgot-password-link">Mot de passe oublié ?</Link>
+            <Link to="/forgot-password" className="text-xs text-primary-ink" data-testid="forgot-password-link">Mot de passe oublié ?</Link>
           </div>
           <Input id="password" type="password" required autoComplete="current-password" value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••" className="h-11" data-testid="login-password-input" />
         </div>
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          <div role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
             data-testid="login-error">{error}</div>
         )}
-        <Button type="submit" className="w-full h-11" disabled={loading} data-testid="login-submit-button">
+        <Button type="submit" className="w-full h-11 bg-primary-ink hover:bg-primary-ink/90" disabled={loading} data-testid="login-submit-button">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Se connecter"}
         </Button>
       </form>

@@ -32,10 +32,10 @@ export default function ForgotPassword() {
     <AuthShell
       title="Mot de passe oublié"
       subtitle="Entrez votre email pour recevoir un lien de réinitialisation."
-      footer={<Link to="/login" className="text-primary font-medium" data-testid="back-to-login-link">Retour à la connexion</Link>}
+      footer={<Link to="/login" className="text-primary-ink font-medium" data-testid="back-to-login-link">Retour à la connexion</Link>}
     >
       {sent ? (
-        <div className="rounded-xl border border-border bg-secondary/40 p-6 text-center" data-testid="forgot-success">
+        <div role="status" className="rounded-xl border border-border bg-secondary/40 p-6 text-center" data-testid="forgot-success">
           <MailCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">
             Si cet email est enregistré, un lien de réinitialisation vous a été envoyé. Vérifiez votre boîte de réception.
@@ -50,11 +50,12 @@ export default function ForgotPassword() {
               className="h-11" data-testid="forgot-email-input" />
           </div>
           {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <div role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {error}
             </div>
           )}
-          <Button type="submit" className="w-full h-11" disabled={loading} data-testid="forgot-submit-button">
+          <Button type="submit" className="w-full h-11 bg-primary-ink hover:bg-primary-ink/90" disabled={loading} data-testid="forgot-submit-button">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Envoyer le lien"}
           </Button>
         </form>

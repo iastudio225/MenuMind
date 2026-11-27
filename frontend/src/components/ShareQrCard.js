@@ -22,7 +22,7 @@ export default function ShareQrCard({ url, publicId }) {
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = href;
-    link.download = `qr-${publicId || "menumind"}.svg`;
+    link.download = `qr-${publicId || "aveniq"}.svg`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -36,7 +36,7 @@ export default function ShareQrCard({ url, publicId }) {
     <div className="rounded-xl border border-border p-4 flex flex-col sm:flex-row sm:items-center gap-4"
       data-testid="share-qr-card">
       <div ref={boxRef} className="bg-white p-2 rounded-lg shrink-0" data-testid="share-qr-code">
-        <QRCodeSVG value={url} size={132} level="M" bgColor="#ffffff" fgColor="#0F172A" />
+        <QRCodeSVG value={url} size={132} level="M" bgColor="#ffffff" fgColor="#0B1F3B" />
       </div>
       <div className="space-y-2 min-w-0">
         <p className="font-medium flex items-center gap-2">

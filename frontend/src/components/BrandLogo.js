@@ -1,19 +1,20 @@
 import React from "react";
-import { UtensilsCrossed } from "lucide-react";
 
 const SIZES = {
-  lg: { box: "w-10 h-10 rounded-xl", icon: "w-5 h-5" },
-  sm: { box: "w-8 h-8 rounded-lg", icon: "w-4 h-4" },
+  lg: "w-10 h-10 rounded-xl",
+  sm: "w-8 h-8 rounded-lg",
 };
 
+/**
+ * Compact AVENIQ app icon (kept for any future square-logo context).
+ * Auth and navigation now use the horizontal `AveniqBrand` mark.
+ */
 export default function BrandLogo({ size = "lg", className = "" }) {
   const s = SIZES[size] || SIZES.lg;
   return (
-    <span
-      className={`${s.box} bg-primary text-primary-foreground grid place-items-center shrink-0 ${className}`}
-      data-testid="brand-logo-icon"
-    >
-      <UtensilsCrossed className={s.icon} />
+    <span className={`block shrink-0 overflow-hidden ${s} ${className}`} data-testid="brand-logo-icon">
+      <img src="/brand/icons/aveniq-icon-96.png" alt="" width={96} height={96}
+        className="h-full w-full object-cover" />
     </span>
   );
 }

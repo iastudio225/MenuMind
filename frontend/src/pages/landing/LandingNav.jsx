@@ -25,7 +25,7 @@ export default function LandingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <Link to="/" aria-label="MenuMind — accueil"
+        <Link to="/" aria-label="AVENIQ — accueil"
           className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
           <LandingBrand />
         </Link>
@@ -42,7 +42,7 @@ export default function LandingNav() {
             <Button variant="ghost" data-testid="nav-login-btn">Connexion</Button>
           </Link>
           <Link to="/register" className="hidden md:block">
-            <Button data-testid="nav-register-btn">Commencer</Button>
+            <Button className="bg-primary-ink hover:bg-primary-ink/90" data-testid="nav-register-btn">Commencer</Button>
           </Link>
 
           <Sheet>
@@ -55,7 +55,7 @@ export default function LandingNav() {
             <SheetContent side="right" className="w-[85vw] max-w-sm" data-testid="nav-mobile-menu">
               <SheetHeader className="text-left">
                 <SheetTitle className="font-heading">Menu</SheetTitle>
-                <SheetDescription className="sr-only">Navigation principale MenuMind</SheetDescription>
+                <SheetDescription className="sr-only">Navigation principale AVENIQ</SheetDescription>
               </SheetHeader>
 
               <nav className="mt-8 flex flex-col gap-1" aria-label="Navigation mobile">
@@ -77,7 +77,7 @@ export default function LandingNav() {
                 </SheetClose>
                 <SheetClose asChild>
                   <Link to="/register" data-testid="nav-mobile-register">
-                    <Button size="lg" className="w-full">Commencer</Button>
+                    <Button size="lg" className="w-full bg-primary-ink hover:bg-primary-ink/90">Commencer</Button>
                   </Link>
                 </SheetClose>
               </div>

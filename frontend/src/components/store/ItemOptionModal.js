@@ -93,7 +93,7 @@ export default function ItemOptionModal({ item, onClose, onAdd, portalContainer 
           )}
           {(item.options || []).map((g) => (
             <div key={g.id} data-testid={`store-group-${g.id}`}>
-              <p className="font-medium text-sm mb-2">{g.name} {g.required && <span className="text-primary text-xs">(obligatoire)</span>}
+              <p className="font-medium text-sm mb-2">{g.name} {g.required && <span className="text-primary-ink text-xs">(obligatoire)</span>}
                 <span className="text-xs text-muted-foreground ml-1">{g.max === 1 ? "— 1 choix" : `— max ${g.max}`}</span></p>
               <div className="space-y-2">
                 {g.choices.map((c) => {

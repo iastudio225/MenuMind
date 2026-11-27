@@ -100,7 +100,7 @@ export default function CheckoutDialog({ open, onOpenChange, cart, cartId, zones
             <div className="flex gap-2">
               {[["DELIVERY", "Livraison"], ["PICKUP", sector.pickupLabel]].map(([v, l]) => (
                 <button key={v} onClick={() => setOrderType(v)} data-testid={`order-type-${v}`}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border ${orderType === v ? "border-primary bg-primary/5 text-primary" : "border-border"}`}>{l}</button>
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border ${orderType === v ? "border-primary bg-primary/5 text-primary-ink" : "border-border"}`}>{l}</button>
               ))}
             </div>
             <div className="grid grid-cols-2 gap-3">

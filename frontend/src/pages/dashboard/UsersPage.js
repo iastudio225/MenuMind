@@ -155,7 +155,7 @@ export default function UsersPage() {
                   <tr key={u.id} className="border-t border-border" data-testid={`user-row-${u.id}`}>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-full bg-primary/10 text-primary grid place-items-center font-semibold">
+                        <span className="w-9 h-9 rounded-full bg-primary-ink/10 text-primary-ink grid place-items-center font-semibold">
                           {u.name?.[0]?.toUpperCase()}
                         </span>
                         <div>

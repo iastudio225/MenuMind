@@ -36,10 +36,11 @@ export default function ResetPassword() {
     <AuthShell
       title="Nouveau mot de passe"
       subtitle="Choisissez un nouveau mot de passe pour votre compte."
-      footer={<Link to="/login" className="text-primary font-medium" data-testid="reset-back-login-link">Retour à la connexion</Link>}
+      footer={<Link to="/login" className="text-primary-ink font-medium" data-testid="reset-back-login-link">Retour à la connexion</Link>}
     >
       {!token ? (
-        <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        <p role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
           data-testid="reset-no-token">
           Lien invalide. Veuillez redemander un lien de réinitialisation.
         </p>
@@ -52,10 +53,11 @@ export default function ResetPassword() {
               placeholder="Minimum 6 caractères" className="h-11" data-testid="reset-password-input" />
           </div>
           {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+            <div role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
               data-testid="reset-error">{error}</div>
           )}
-          <Button type="submit" className="w-full h-11" disabled={loading} data-testid="reset-submit-button">
+          <Button type="submit" className="w-full h-11 bg-primary-ink hover:bg-primary-ink/90" disabled={loading} data-testid="reset-submit-button">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Réinitialiser"}
           </Button>
         </form>

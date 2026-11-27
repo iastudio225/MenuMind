@@ -57,7 +57,7 @@ export default function Pricing() {
             data-testid={`pricing-card-${p.code.toLowerCase()}`}>
             {p.badge && (
               <span className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold ${
-                p.highlighted ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                p.highlighted ? "bg-primary-ink text-white" : "bg-secondary text-secondary-foreground"}`}>
                 {p.badge}
               </span>
             )}
@@ -67,15 +67,10 @@ export default function Pricing() {
               <span className="text-3xl font-bold font-heading">{formatFCFA(p.price)}</span>
               <span className="text-muted-foreground text-sm"> /mois</span>
             </div>
-            <ul className="mt-6 flex-1 space-y-3 text-sm">
-              {p.features.map((f, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" /> {f}
-                </li>
-              ))}
-            </ul>
+            <div className="flex-1" />
             <Link to="/register" className="mt-8 block">
-              <Button className="w-full" variant={p.highlighted ? "default" : "outline"}
+              <Button className={`w-full ${p.highlighted ? "bg-primary-ink hover:bg-primary-ink/90" : ""}`}
+                variant={p.highlighted ? "default" : "outline"}
                 data-testid={`pricing-plan-${p.code.toLowerCase()}-btn`}>
                 Choisir {p.code}
               </Button>

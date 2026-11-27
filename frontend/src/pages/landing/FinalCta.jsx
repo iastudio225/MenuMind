@@ -6,7 +6,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 export default function FinalCta() {
   return (
     <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-24" data-testid="final-cta-section">
-      <div className="relative overflow-hidden rounded-3xl bg-[#0F172A] px-6 py-14 text-center text-white shadow-2xl sm:px-10 sm:py-16 lg:py-20">
+      <div className="relative overflow-hidden rounded-3xl bg-foreground px-6 py-14 text-center text-white shadow-2xl sm:px-10 sm:py-16 lg:py-20">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/30 blur-3xl" />
           <div className="absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
@@ -28,7 +28,7 @@ export default function FinalCta() {
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link to="/register" className="w-full sm:w-auto">
-              <Button size="lg" className="h-12 w-full px-7 text-base sm:w-auto"
+              <Button size="lg" className="h-12 w-full bg-primary-ink px-7 text-base hover:bg-primary-ink/90 sm:w-auto"
                 data-testid="cta-bottom-signup">
                 Créer mon assistant IA <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>

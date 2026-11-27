@@ -234,7 +234,7 @@ export default function SettingsPage() {
               <div className="space-y-2"><Label>Couleur principale</Label>
                 <Input type="color" disabled={readOnly} value={data.widget?.primary_color || "#E05638"} onChange={setWidget("primary_color")} className="h-11 w-full" data-testid="widget-primary-color" /></div>
               <div className="space-y-2"><Label>Couleur secondaire</Label>
-                <Input type="color" disabled={readOnly} value={data.widget?.secondary_color || "#0F172A"} onChange={setWidget("secondary_color")} className="h-11 w-full" data-testid="widget-secondary-color" /></div>
+                <Input type="color" disabled={readOnly} value={data.widget?.secondary_color || "#0B1F3B"} onChange={setWidget("secondary_color")} className="h-11 w-full" data-testid="widget-secondary-color" /></div>
             </div>
             <div className="space-y-2"><Label>Message d'accueil</Label>
               <Textarea disabled={readOnly} rows={2} value={data.widget?.welcome_message || ""} onChange={setWidget("welcome_message")} data-testid="widget-welcome-message" /></div>
@@ -299,7 +299,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="webhook-url">URL du webhook n8n</Label>
               <Input id="webhook-url" value={data.notifications?.webhook_url || ""} onChange={setNotification("webhook_url")}
-                placeholder="https://n8n.exemple.com/webhook/menumind" data-testid="webhook-url-input" />
+                placeholder="https://n8n.exemple.com/webhook/aveniq" data-testid="webhook-url-input" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="webhook-secret">Secret de signature (optionnel)</Label>

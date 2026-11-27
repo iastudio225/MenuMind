@@ -23,28 +23,28 @@ export default function Hero() {
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/40" />
         <div className="absolute -top-32 right-[-10%] h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute left-[-10%] top-40 h-72 w-72 rounded-full bg-[#0F172A]/5 blur-3xl" />
+        <div className="absolute left-[-10%] top-40 h-72 w-72 rounded-full bg-foreground/5 blur-3xl" />
       </div>
 
       <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:py-28">
         <motion.div {...fadeUp(0)} className="min-w-0">
-          <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-            <Sparkles className="h-4 w-4" aria-hidden="true" /> AI Assistant • Entreprises
+          <span className="inline-flex items-center gap-2 rounded-full border border-primary-ink/20 bg-primary-ink/10 px-3 py-1 text-sm font-medium text-primary-ink">
+            <Sparkles className="h-4 w-4" aria-hidden="true" /> AI Business Assistant
           </span>
 
-          <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-            Votre entreprise ne devrait plus jamais laisser un client{" "}
-            <span className="text-primary">sans réponse</span>.
+          <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+            Votre assistant IA pour votre entreprise.
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Votre assistant IA répond à vos clients, connaît votre activité, traite les demandes
-            et vous aide à automatiser votre quotidien. 24h/24.
+            AVENIQ répond à vos clients, présente vos services et produits, centralise les
+            informations de votre entreprise et automatise vos échanges — à tout moment.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/experience/rest_demo_chezawa">
-              <Button size="lg" className="h-12 px-7 text-base" data-testid="hero-cta-demo">
+              <Button size="lg" className="h-12 px-7 text-base bg-primary-ink hover:bg-primary-ink/90"
+                data-testid="hero-cta-demo">
                 Tester l'assistant <ArrowRight aria-hidden="true" />
               </Button>
             </Link>
@@ -67,20 +67,19 @@ export default function Hero() {
             </span>
           </div>
 
-          {/* Preserves the former hero pricing CTA (same destination, same testid). */}
           <a href="#pricing" data-testid="hero-pricing-btn"
-            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-ink hover:underline">
             Voir les tarifs <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </a>
         </motion.div>
 
         <motion.div {...fadeUp(0.15)} className="relative min-w-0">
           <div aria-hidden="true"
-            className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-primary/15 via-transparent to-[#0F172A]/10 blur-2xl" />
+            className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-primary/15 via-transparent to-foreground/10 blur-2xl" />
 
           <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
             data-testid="hero-chat-preview">
-            <div className="flex items-center gap-3 bg-[#0F172A] px-5 py-4 text-white">
+            <div className="flex items-center gap-3 bg-foreground px-5 py-4 text-white">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/20 text-primary ring-1 ring-white/10">
                 <Sparkles className="h-5 w-5" aria-hidden="true" />
               </span>
@@ -95,13 +94,13 @@ export default function Hero() {
               </span>
             </div>
 
-            <div className="space-y-3 bg-[#FAF7F2] p-5">
+            <div className="space-y-3 bg-background p-5">
               {CHAT.map((m, i) => (
                 <motion.div key={i} {...message(i)}
                   className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm ${
                     m.from === "user"
-                      ? "rounded-br-sm bg-primary text-primary-foreground"
+                      ? "rounded-br-sm bg-primary-ink text-white"
                       : "rounded-bl-sm border border-border bg-white text-foreground"}`}>
                     {m.text}
                   </div>

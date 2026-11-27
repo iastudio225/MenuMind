@@ -111,7 +111,7 @@ export default function OrdersPage() {
         {filters.map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)} data-testid={`filter-${v}`}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === v ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
+              filter === v ? "bg-primary-ink text-white" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>
             {l}
           </button>
         ))}

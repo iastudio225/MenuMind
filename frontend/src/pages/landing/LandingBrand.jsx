@@ -1,20 +1,15 @@
 import React from "react";
-import { Sparkles } from "lucide-react";
+import AveniqBrand from "@/components/AveniqBrand";
 
 /**
- * Landing-only brand mark. The shared `BrandLogo` keeps its restaurant icon for
- * the dashboard and auth screens; here the icon is intentionally neutral (AI).
+ * Landing header brand: the AVENIQ horizontal logo (light variant).
+ * The wrapper keeps the historical `brand-logo` testid; the image keeps
+ * `brand-logo-icon` so existing automation keeps working.
  */
 export default function LandingBrand() {
   return (
-    <span className="flex items-center gap-2.5 font-heading font-bold text-xl" data-testid="brand-logo">
-      <span className="relative grid h-10 w-10 place-items-center rounded-xl bg-[#0F172A] text-primary shadow-sm"
-        data-testid="brand-logo-icon">
-        <Sparkles className="h-5 w-5" aria-hidden="true" />
-        <span aria-hidden="true"
-          className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-      </span>
-      <span className="tracking-tight">Menu<span className="text-primary">Mind</span></span>
+    <span className="flex items-center" data-testid="brand-logo">
+      <AveniqBrand variant="light" className="h-8 sm:h-9" testId="brand-logo-icon" alt="" />
     </span>
   );
 }

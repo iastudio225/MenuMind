@@ -21,7 +21,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const cartStorageKey = (pid) => `menumind:cart:${pid}`;
 const convStorageKey = (pid) => `menumind:conv:${pid}`;
 const FALLBACK_PRIMARY = "#E05638";
-const FALLBACK_SECONDARY = "#0F172A";
+const FALLBACK_SECONDARY = "#0B1F3B";
 
 function clearStoredSession(pid) {
   localStorage.removeItem(cartStorageKey(pid));

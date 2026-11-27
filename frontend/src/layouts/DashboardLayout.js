@@ -5,7 +5,7 @@ import {
   MessageSquare, Settings, LogOut, Menu as MenuIcon, X, UserCog, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import BrandLogo from "@/components/BrandLogo";
+import AveniqBrand from "@/components/AveniqBrand";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_LABELS } from "@/lib/format";
 import { secteurConfig } from "@/lib/secteurs";
@@ -67,8 +67,7 @@ export default function DashboardLayout() {
   const SidebarContent = () => (
     <>
       <div className="flex items-center gap-2 font-heading font-bold text-lg px-5 h-16 border-b border-border">
-        <BrandLogo size="sm" />
-        Menu<span className="text-primary">Mind</span>
+        <AveniqBrand variant="light" className="h-7" testId="brand-logo-icon" alt="" />
       </div>
       <div className="px-4 py-4">
         <div className="rounded-xl bg-secondary px-3 py-2.5">
@@ -81,14 +80,14 @@ export default function DashboardLayout() {
           <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setOpen(false)} data-testid={n.testid}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+                isActive ? "bg-primary-ink text-white" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
             <n.icon className="w-4 h-4" /> {n.label}
           </NavLink>
         ))}
       </nav>
       <div className="p-3 border-t border-border">
         <div className="flex items-center gap-3 px-3 py-2">
-          <span className="w-9 h-9 rounded-full bg-primary/10 text-primary grid place-items-center font-semibold text-sm">
+          <span className="w-9 h-9 rounded-full bg-primary-ink/10 text-primary-ink grid place-items-center font-semibold text-sm">
             {user?.name?.[0]?.toUpperCase() || "U"}
           </span>
           <div className="flex-1 min-w-0">
@@ -122,8 +121,7 @@ export default function DashboardLayout() {
       <div className="flex-1 lg:ml-64">
         <header className="lg:hidden h-16 flex items-center justify-between px-4 border-b border-border bg-card">
           <div className="flex items-center gap-2 font-heading font-bold">
-            <BrandLogo size="sm" />
-            MenuMind
+            <AveniqBrand variant="light" className="h-7" alt="" />
           </div>
           <Button variant="ghost" size="icon" onClick={() => setOpen((o) => !o)} data-testid="mobile-menu-toggle">
             {open ? <X className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}

@@ -6,7 +6,7 @@ import {
   Lock, Save, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import BrandLogo from "@/components/BrandLogo";
+import AveniqBrand from "@/components/AveniqBrand";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -396,8 +396,8 @@ export default function SuperAdmin() {
     <div className="min-h-screen bg-background">
       <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-8">
         <div className="flex items-center gap-2 font-heading font-bold text-lg">
-          <BrandLogo size="lg" />
-          MenuMind <span className="text-muted-foreground font-normal text-sm">· Super Admin</span>
+          <AveniqBrand variant="light" className="h-8" testId="brand-logo-icon" alt="" />
+          <span className="text-muted-foreground font-normal text-sm">· Super Admin</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>

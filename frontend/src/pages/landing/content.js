@@ -4,17 +4,14 @@ export const STATIC_PLANS = [
   {
     code: "STARTER", price: 15000, highlighted: false, badge: "Démarrage",
     desc: "Pour lancer votre assistant et traiter vos premières demandes.",
-    features: ["Jusqu'à 300 demandes / mois", "500 conversations IA / mois", "Jusqu'à 2 utilisateurs"],
   },
   {
     code: "BUSINESS", price: 30000, highlighted: true, badge: "Recommandé",
     desc: "Pour automatiser le quotidien d'une équipe qui grandit.",
-    features: ["Demandes illimitées", "5 000 conversations IA / mois", "Jusqu'à 10 utilisateurs"],
   },
   {
     code: "PRO", price: 50000, highlighted: false, badge: "Avancé",
     desc: "Pour les organisations aux besoins opérationnels plus larges.",
-    features: ["Demandes illimitées", "Conversations IA illimitées", "Utilisateurs illimités"],
   },
 ];
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import AveniqBrand from "@/components/AveniqBrand";
 
 const FOOTER_LINKS = [
   { href: "#features", label: "Produit", testid: "footer-link-product" },
@@ -8,28 +8,15 @@ const FOOTER_LINKS = [
   { href: "/experience/rest_demo_chezawa", label: "Démo", testid: "footer-link-demo", route: true },
 ];
 
-function FooterBrand() {
-  return (
-    <span className="flex items-center gap-2.5 font-heading text-lg font-bold">
-      <span className="relative grid h-9 w-9 place-items-center rounded-lg bg-[#0F172A] text-primary">
-        <Sparkles className="h-4 w-4" aria-hidden="true" />
-        <span aria-hidden="true"
-          className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background" />
-      </span>
-      <span>Menu<span className="text-primary">Mind</span></span>
-    </span>
-  );
-}
-
 export default function LandingFooter() {
   return (
     <footer className="border-t border-border bg-background" data-testid="landing-footer">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
           <div className="max-w-md">
-            <Link to="/" aria-label="MenuMind — accueil"
+            <Link to="/" aria-label="AVENIQ — accueil"
               className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-              <FooterBrand />
+              <AveniqBrand variant="light" className="h-8" alt="" />
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               L'assistant IA qui accompagne vos clients, répond à leurs questions et facilite
@@ -53,7 +40,7 @@ export default function LandingFooter() {
         </div>
 
         <div className="mt-8 flex flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} MenuMind — Tous droits réservés.</p>
+          <p>© {new Date().getFullYear()} AVENIQ — Tous droits réservés.</p>
           <p>Abidjan, Côte d'Ivoire</p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-/* MenuMind — chargeur du widget embarquable.
+/* AVENIQ — chargeur du widget embarquable.
    Usage : <script src="https://API_ORIGIN/widget.js" data-business="rest_xxx"></script>
    "data-restaurant" reste accepté pour les intégrations existantes.
    Chaque balise script = un widget isolé (iframe same-origin API, zéro conflit CSS/JS hôte). */
@@ -17,8 +17,8 @@
 
   var iframe = document.createElement("iframe");
   iframe.src = apiOrigin + "/widget-frame.html?restaurant=" + encodeURIComponent(restaurantId);
-  iframe.title = "Assistant de commande";
-  iframe.setAttribute("aria-label", "Assistant de commande " + restaurantId);
+  iframe.title = "Assistant IA";
+  iframe.setAttribute("aria-label", "Assistant IA " + restaurantId);
   iframe.style.cssText =
     "position:fixed;bottom:20px;right:20px;width:64px;height:64px;border:0;" +
     "z-index:2147483000;box-shadow:none;background:transparent;";

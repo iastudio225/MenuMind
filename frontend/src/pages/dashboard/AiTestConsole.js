@@ -76,7 +76,7 @@ export default function AiTestConsole() {
           {sector.value === "restaurant" ? "Réceptionniste IA" : "Assistant IA"}
         </h1>
         <span
-          className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary"
+          className="rounded-full border border-primary-ink/30 bg-primary-ink/10 px-2.5 py-0.5 text-xs font-semibold text-primary-ink"
           data-testid="ai-test-badge"
         >
           Console de test
@@ -94,7 +94,7 @@ export default function AiTestConsole() {
 
       <div className="mt-6 flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm" style={{ height: "min(640px, calc(100vh - 280px))" }}>
         {/* En-tête */}
-        <div className="flex items-center justify-between gap-3 border-b border-border bg-[#0F172A] px-4 py-3 text-white">
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-foreground px-4 py-3 text-white">
           <div className="flex min-w-0 items-center gap-3">
             <span className="w-9 h-9 rounded-full bg-primary grid place-items-center">
               <Bot className="w-5 h-5" />
@@ -135,7 +135,7 @@ export default function AiTestConsole() {
           {messages.map((m, i) =>
             m.role === "user" ? (
               <div key={i} className="flex justify-end" data-testid="ai-message-user">
-                <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground whitespace-pre-wrap">
+                <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary-ink px-3 py-2 text-sm text-white whitespace-pre-wrap">
                   {m.content}
                 </p>
               </div>
